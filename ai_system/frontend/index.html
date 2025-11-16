@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Self-Learning AI System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Self-Learning AI System</h1>
+        <div id="status" class="status"></div>
+        
+        <div class="section">
+            <h2>Predict Action</h2>
+            <input type="text" id="stateInput" placeholder="Enter state (e.g., [1,2,3] or simple_state)">
+            <button onclick="predictAction()">Predict</button>
+            <div id="predictResult" class="result"></div>
+        </div>
+        
+        <div class="section">
+            <h2>Update Model</h2>
+            <input type="text" id="updateState" placeholder="State">
+            <input type="number" id="updateAction" placeholder="Action (0-3)" min="0" max="3">
+            <input type="number" id="updateReward" placeholder="Reward" step="0.1">
+            <input type="text" id="updateNextState" placeholder="Next State">
+            <button onclick="updateModel()">Update</button>
+            <div id="updateResult" class="result"></div>
+        </div>
+        
+        <div class="section">
+            <h2>Q-Table Status</h2>
+            <button onclick="loadStatus()">Refresh Status</button>
+            <div id="qtableDisplay" class="qtable"></div>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>

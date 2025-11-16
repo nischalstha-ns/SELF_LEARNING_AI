@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  ai-saas-backend:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - SECRET_KEY=your-production-secret-key-change-this
+      - DATABASE_URL=sqlite:///./saas_ai.db
+    volumes:
+      - ./database:/app/database
+    restart: unless-stopped
+
+  ai-saas-frontend:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - ai-saas-backend
+    restart: unless-stopped
+
+volumes:
+  database:
