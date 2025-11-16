@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Self Learning AI</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Self Learning AI</h1>
+        
+        <div class="upload-section">
+            <h2>Upload Data</h2>
+            <input type="file" id="fileInput" accept=".csv,.json,.txt">
+            <button onclick="uploadFile()">Upload</button>
+        </div>
+        
+        <div class="prediction-section">
+            <h2>Make Prediction</h2>
+            <textarea id="dataInput" placeholder='{"feature1": 10, "feature2": 20}'></textarea>
+            <button onclick="makePrediction()">Predict</button>
+            <div id="result"></div>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
