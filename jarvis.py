@@ -4,7 +4,12 @@ import subprocess
 import os
 import json
 import webbrowser
+import requests
+import psutil
+import pyautogui
+import threading
 from datetime import datetime
+from bs4 import BeautifulSoup
 
 class Jarvis:
     def __init__(self):
@@ -13,7 +18,8 @@ class Jarvis:
         self.recognizer = sr.Recognizer()
         self.memory_file = 'memory.json'
         self.memory = self.load_memory()
-        self.command_keywords = ['open', 'close', 'search', 'play', 'create', 'delete', 'run', 'stop', 'exit', 'time', 'what', 'how', 'show']
+        self.command_keywords = ['open', 'close', 'search', 'play', 'create', 'delete', 'run', 'stop', 'exit', 'time', 'what', 'how', 'show', 'volume', 'brightness', 'wifi', 'bluetooth', 'shutdown', 'restart', 'lock', 'screenshot']
+        self.listening = True
     
     def speak(self, text):
         print(f"JARVIS: {text}")
@@ -65,9 +71,82 @@ class Jarvis:
             value = text
         return key, value
     
+    def search_web(self, query):
+        try:
+            url = f"https://api.duckduckgo.com/?q={query}&format=json"
+            response = requests.get(url, timeout=3)
+            data = response.json()
+            if data.get('AbstractText'):
+                return data['AbstractText']
+            
+            search_url = f"https://www.google.com/search?q={query}"
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            response = requests.get(search_url, headers=headers, timeout=3)
+            soup = BeautifulSoup(response.text, 'html.parser')
+            result = soup.find('div', class_='BNeawe')
+            return result.text if result else "I couldn't find that information"
+        except:
+            return "I'm having trouble accessing the web right now"
+    
+    def system_control(self, command):
+        lower = command.lower()
+        
+        if 'volume up' in lower:
+            pyautogui.press('volumeup', presses=5)
+            return "Volume increased"
+        elif 'volume down' in lower:
+            pyautogui.press('volumedown', presses=5)
+            return "Volume decreased"
+        elif 'mute' in lower:
+            pyautogui.press('volumemute')
+            return "Muted"
+        
+        elif 'brightness up' in lower:
+            subprocess.run('powershell (Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1,100)', shell=True)
+            return "Brightness increased"
+        elif 'brightness down' in lower:
+            subprocess.run('powershell (Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1,30)', shell=True)
+            return "Brightness decreased"
+        
+        elif 'wifi off' in lower:
+            subprocess.run('netsh interface set interface "Wi-Fi" disabled', shell=True)
+            return "WiFi disabled"
+        elif 'wifi on' in lower:
+            subprocess.run('netsh interface set interface "Wi-Fi" enabled', shell=True)
+            return "WiFi enabled"
+        
+        elif 'screenshot' in lower:
+            screenshot = pyautogui.screenshot()
+            screenshot.save(f'screenshot_{datetime.now().strftime("%Y%m%d_%H%M%S")}.png')
+            return "Screenshot saved"
+        
+        elif 'lock' in lower:
+            subprocess.run('rundll32.exe user32.dll,LockWorkStation', shell=True)
+            return "Locking computer"
+        
+        elif 'shutdown' in lower:
+            subprocess.run('shutdown /s /t 5', shell=True)
+            return "Shutting down in 5 seconds"
+        
+        elif 'restart' in lower:
+            subprocess.run('shutdown /r /t 5', shell=True)
+            return "Restarting in 5 seconds"
+        
+        elif 'running apps' in lower or 'processes' in lower:
+            apps = [p.name() for p in psutil.process_iter()[:5]]
+            return f"Running: {', '.join(apps)}"
+        
+        return None
+    
     def execute_action(self, command):
         lower = command.lower()
         
+        # System control
+        sys_response = self.system_control(command)
+        if sys_response:
+            return sys_response
+        
+        # App control
         if 'open' in lower:
             app = lower.split('open')[-1].strip()
             try:
@@ -81,6 +160,7 @@ class Jarvis:
             subprocess.run(f'taskkill /IM {app}.exe /F', shell=True, capture_output=True)
             return f"Closing {app}"
         
+        # Web actions
         elif 'search' in lower:
             query = lower.split('search')[-1].strip()
             webbrowser.open(f'https://www.google.com/search?q={query}')
@@ -91,6 +171,18 @@ class Jarvis:
             webbrowser.open(f'https://www.youtube.com/results?search_query={query}')
             return f"Playing {query}"
         
+        # Knowledge queries
+        elif any(word in lower for word in ['what is', 'who is', 'where is', 'when is', 'how to', 'why']):
+            # Check memory first
+            for key in self.memory:
+                if any(word in key.lower() for word in lower.split()):
+                    return self.memory[key]
+            # Search web
+            result = self.search_web(command)
+            self.memory[command] = result
+            self.save_memory()
+            return result
+        
         elif 'time' in lower:
             return datetime.now().strftime("It's %I:%M %p")
         
@@ -99,7 +191,8 @@ class Jarvis:
             for key in self.memory:
                 if topic in key.lower():
                     return self.memory[key]
-            return "I don't have that information"
+            result = self.search_web(topic)
+            return result
         
         elif 'correct' in lower or 'wrong' in lower or 'actually' in lower:
             self.speak("What's the correct information?")
@@ -110,6 +203,10 @@ class Jarvis:
                 self.save_memory()
                 return "Got it, I've updated my memory"
             return "I didn't catch that"
+        
+        elif 'stop listening' in lower or 'pause' in lower:
+            self.listening = False
+            return "I'll stop listening. Say 'hey Jarvis' to wake me"
         
         elif 'stop' in lower or 'exit' in lower or 'quit' in lower:
             return None
@@ -136,12 +233,23 @@ class Jarvis:
         self.speak(response)
         return True
     
-    def run(self):
-        self.speak("JARVIS online. How can I help you?")
+    def continuous_listen(self):
         while True:
+            if not self.listening:
+                text = self.listen()
+                if text and 'hey jarvis' in text.lower():
+                    self.listening = True
+                    self.speak("Yes, I'm here")
+                continue
+            
             text = self.listen()
-            if not self.process(text):
-                break
+            if text:
+                if not self.process(text):
+                    break
+    
+    def run(self):
+        self.speak("JARVIS fully operational. All systems online. I'm always listening")
+        self.continuous_listen()
 
 if __name__ == "__main__":
     jarvis = Jarvis()
