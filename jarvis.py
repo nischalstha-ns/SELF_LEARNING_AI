@@ -10,14 +10,13 @@ import pyautogui
 import threading
 from datetime import datetime
 from bs4 import BeautifulSoup
-from googletrans import Translator
+from deep_translator import GoogleTranslator
 
 class Jarvis:
     def __init__(self):
         self.engine = pyttsx3.init()
         self.engine.setProperty('rate', 180)
         self.recognizer = sr.Recognizer()
-        self.translator = Translator()
         self.memory_file = 'memory.json'
         self.memory = self.load_memory()
         self.command_keywords = ['open', 'close', 'search', 'play', 'create', 'delete', 'run', 'stop', 'exit', 'time', 'what', 'how', 'show', 'volume', 'brightness', 'wifi', 'bluetooth', 'shutdown', 'restart', 'lock', 'screenshot']
@@ -32,7 +31,7 @@ class Jarvis:
         # Translate to Nepali if needed
         if lang == 'ne':
             try:
-                nepali_text = self.translator.translate(text, src='en', dest='ne').text
+                nepali_text = GoogleTranslator(source='en', target='ne').translate(text)
                 print(f"जार्विस: {nepali_text}")
                 # Use English TTS but show Nepali text
                 self.engine.say(text)
@@ -80,7 +79,7 @@ class Jarvis:
     def translate_to_english(self, text):
         if self.current_language == 'ne':
             try:
-                return self.translator.translate(text, src='ne', dest='en').text
+                return GoogleTranslator(source='ne', target='en').translate(text)
             except:
                 return text
         return text
