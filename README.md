@@ -10,7 +10,12 @@ pip install -r requirements.txt
 python jarvis.py
 ```
 
-## Commands
+## Language Support
+- **English** - Full support
+- **Nepali (नेपाली)** - Full support with auto-detection
+- Speak in either language, JARVIS understands both!
+
+## Commands / आदेशहरू
 
 **System Control:**
 - Volume up/down/mute

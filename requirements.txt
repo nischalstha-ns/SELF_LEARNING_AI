@@ -6,3 +6,4 @@ beautifulsoup4
 psutil
 pyautogui
 Pillow
+googletrans==4.0.0rc1

@@ -10,33 +10,62 @@ import pyautogui
 import threading
 from datetime import datetime
 from bs4 import BeautifulSoup
+from googletrans import Translator
 
 class Jarvis:
     def __init__(self):
         self.engine = pyttsx3.init()
         self.engine.setProperty('rate', 180)
         self.recognizer = sr.Recognizer()
+        self.translator = Translator()
         self.memory_file = 'memory.json'
         self.memory = self.load_memory()
         self.command_keywords = ['open', 'close', 'search', 'play', 'create', 'delete', 'run', 'stop', 'exit', 'time', 'what', 'how', 'show', 'volume', 'brightness', 'wifi', 'bluetooth', 'shutdown', 'restart', 'lock', 'screenshot']
+        self.nepali_keywords = ['खोल्नुहोस्', 'बन्द', 'खोज', 'बजाउनुहोस्', 'समय', 'के', 'कसरी', 'भोल्युम', 'वाइफाइ', 'स्क्रिनशट', 'बन्द गर्नुहोस्', 'रिस्टार्ट']
         self.listening = True
+        self.current_language = 'en'
     
-    def speak(self, text):
-        print(f"JARVIS: {text}")
-        self.engine.say(text)
-        self.engine.runAndWait()
+    def speak(self, text, lang=None):
+        if lang is None:
+            lang = self.current_language
+        
+        # Translate to Nepali if needed
+        if lang == 'ne':
+            try:
+                nepali_text = self.translator.translate(text, src='en', dest='ne').text
+                print(f"जार्विस: {nepali_text}")
+                # Use English TTS but show Nepali text
+                self.engine.say(text)
+                self.engine.runAndWait()
+            except:
+                print(f"JARVIS: {text}")
+                self.engine.say(text)
+                self.engine.runAndWait()
+        else:
+            print(f"JARVIS: {text}")
+            self.engine.say(text)
+            self.engine.runAndWait()
     
     def listen(self):
         with sr.Microphone() as source:
-            print("Listening...")
+            print("सुन्दै छु... / Listening...")
             self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
             audio = self.recognizer.listen(source)
         try:
-            text = self.recognizer.recognize_google(audio)
+            # Try English first
+            text = self.recognizer.recognize_google(audio, language='en-US')
             print(f"You: {text}")
+            self.current_language = 'en'
             return text
         except:
-            return ""
+            try:
+                # Try Nepali
+                text = self.recognizer.recognize_google(audio, language='ne-NP')
+                print(f"तपाईं: {text}")
+                self.current_language = 'ne'
+                return text
+            except:
+                return ""
     
     def load_memory(self):
         if os.path.exists(self.memory_file):
@@ -48,12 +77,23 @@ class Jarvis:
         with open(self.memory_file, 'w') as f:
             json.dump(self.memory, f, indent=2)
     
+    def translate_to_english(self, text):
+        if self.current_language == 'ne':
+            try:
+                return self.translator.translate(text, src='ne', dest='en').text
+            except:
+                return text
+        return text
+    
     def detect_intent(self, text):
-        lower = text.lower()
+        # Translate Nepali to English for processing
+        english_text = self.translate_to_english(text)
+        lower = english_text.lower()
+        
         for keyword in self.command_keywords:
             if keyword in lower:
                 return 'command'
-        if any(word in lower for word in ['my', 'i am', "i'm", 'is', 'are', 'was']):
+        if any(word in lower for word in ['my', 'i am', "i'm", 'is', 'are', 'was', 'मेरो', 'म']):
             return 'knowledge'
         return 'command'
     
@@ -217,29 +257,34 @@ class Jarvis:
         if not text:
             return True
         
-        intent = self.detect_intent(text)
+        # Translate Nepali to English for processing
+        english_text = self.translate_to_english(text)
+        
+        intent = self.detect_intent(english_text)
         
         if intent == 'knowledge':
-            key, value = self.extract_knowledge(text)
+            key, value = self.extract_knowledge(english_text)
             self.memory[key] = value
             self.save_memory()
-            response = f"Understood, I'll remember that"
+            response = "Understood, I'll remember that"
         else:
-            response = self.execute_action(text)
+            response = self.execute_action(english_text)
             if response is None:
-                self.speak("Shutting down")
+                self.speak("Shutting down", self.current_language)
                 return False
         
-        self.speak(response)
+        self.speak(response, self.current_language)
         return True
     
     def continuous_listen(self):
         while True:
             if not self.listening:
                 text = self.listen()
-                if text and 'hey jarvis' in text.lower():
-                    self.listening = True
-                    self.speak("Yes, I'm here")
+                if text:
+                    lower = text.lower()
+                    if 'hey jarvis' in lower or 'हे जार्विस' in lower or 'जार्विस' in lower:
+                        self.listening = True
+                        self.speak("Yes, I'm here", self.current_language)
                 continue
             
             text = self.listen()
@@ -249,6 +294,7 @@ class Jarvis:
     
     def run(self):
         self.speak("JARVIS fully operational. All systems online. I'm always listening")
+        print("जार्विस पूर्ण रूपमा सञ्चालनमा। सबै प्रणाली अनलाइन। म सधैं सुन्दै छु")
         self.continuous_listen()
 
 if __name__ == "__main__":
