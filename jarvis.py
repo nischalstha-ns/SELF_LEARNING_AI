@@ -112,20 +112,63 @@ class Jarvis:
     
     def search_web(self, query):
         try:
+            # Try DuckDuckGo API first
             url = f"https://api.duckduckgo.com/?q={query}&format=json"
-            response = requests.get(url, timeout=3)
+            response = requests.get(url, timeout=5)
             data = response.json()
-            if data.get('AbstractText'):
-                return data['AbstractText']
             
+            if data.get('AbstractText'):
+                answer = data['AbstractText']
+                self.learn(query, answer)
+                return answer
+            
+            # Try Wikipedia API
+            wiki_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{query.replace(' ', '_')}"
+            response = requests.get(wiki_url, timeout=5)
+            if response.status_code == 200:
+                wiki_data = response.json()
+                if wiki_data.get('extract'):
+                    answer = wiki_data['extract']
+                    self.learn(query, answer)
+                    return answer
+            
+            # Fallback to Google scraping
             search_url = f"https://www.google.com/search?q={query}"
             headers = {'User-Agent': 'Mozilla/5.0'}
-            response = requests.get(search_url, headers=headers, timeout=3)
+            response = requests.get(search_url, headers=headers, timeout=5)
             soup = BeautifulSoup(response.text, 'html.parser')
-            result = soup.find('div', class_='BNeawe')
-            return result.text if result else "I couldn't find that information"
+            
+            # Try featured snippet
+            snippet = soup.find('div', class_='BNeawe')
+            if snippet:
+                answer = snippet.text
+                self.learn(query, answer)
+                return answer
+            
+            return "I couldn't find reliable information about that"
         except:
             return "I'm having trouble accessing the web right now"
+    
+    def learn(self, key, value):
+        """Store knowledge in memory"""
+        self.memory[key.lower()] = value
+        self.save_memory()
+        print(f"[LEARNED] {key[:50]}...")
+    
+    def recall(self, query):
+        """Retrieve knowledge from memory"""
+        query_lower = query.lower()
+        
+        # Exact match
+        if query_lower in self.memory:
+            return self.memory[query_lower]
+        
+        # Partial match
+        for key in self.memory:
+            if query_lower in key or key in query_lower:
+                return self.memory[key]
+        
+        return None
     
     def system_control(self, command):
         lower = command.lower()
@@ -210,16 +253,16 @@ class Jarvis:
             webbrowser.open(f'https://www.youtube.com/results?search_query={query}')
             return f"Playing {query}"
         
-        # Knowledge queries
-        elif any(word in lower for word in ['what is', 'who is', 'where is', 'when is', 'how to', 'why']):
-            # Check memory first
-            for key in self.memory:
-                if any(word in key.lower() for word in lower.split()):
-                    return self.memory[key]
-            # Search web
+        # Knowledge queries - Self-learning mode
+        elif any(word in lower for word in ['what is', 'who is', 'where is', 'when is', 'how to', 'why', 'tell me', 'explain']):
+            # Check memory first (recall)
+            remembered = self.recall(command)
+            if remembered:
+                return f"I remember: {remembered}"
+            
+            # Don't know - search web and learn
+            self.speak("Let me search that for you")
             result = self.search_web(command)
-            self.memory[command] = result
-            self.save_memory()
             return result
         
         elif 'time' in lower:
@@ -227,9 +270,14 @@ class Jarvis:
         
         elif 'what do you know' in lower or 'tell me about' in lower:
             topic = lower.split('about')[-1].strip() if 'about' in lower else lower.split('know')[-1].strip()
-            for key in self.memory:
-                if topic in key.lower():
-                    return self.memory[key]
+            
+            # Check memory first
+            remembered = self.recall(topic)
+            if remembered:
+                return remembered
+            
+            # Search and learn
+            self.speak("I don't know that yet. Let me learn it")
             result = self.search_web(topic)
             return result
         
@@ -263,14 +311,24 @@ class Jarvis:
         
         if intent == 'knowledge':
             key, value = self.extract_knowledge(english_text)
-            self.memory[key] = value
-            self.save_memory()
-            response = "Understood, I'll remember that"
+            self.learn(key, value)
+            response = "Understood, I've learned that"
         else:
             response = self.execute_action(english_text)
             if response is None:
                 self.speak("Shutting down", self.current_language)
                 return False
+            
+            # If response indicates unknown command, try to learn from web
+            if "not sure" in response.lower() or "rephrase" in response.lower():
+                # Check if it's a question
+                if any(word in english_text.lower() for word in ['what', 'who', 'where', 'when', 'how', 'why']):
+                    remembered = self.recall(english_text)
+                    if remembered:
+                        response = remembered
+                    else:
+                        self.speak("Let me search that for you")
+                        response = self.search_web(english_text)
         
         self.speak(response, self.current_language)
         return True
