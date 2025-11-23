@@ -19,54 +19,84 @@ python jarvis_launcher.py
 
 ## Run
 
-**Option 1: ULTIMATE Mode (100% Optimized)**
+**Option 1: SINGULARITY Mode (Beyond Limits)**
+```bash
+python jarvis_singularity.py
+```
+Or double-click `start_singularity.bat`
+
+**Option 2: PHOTON Mode (Light Speed)**
+```bash
+python jarvis_photon.py
+```
+Or double-click `start_photon.bat`
+
+**Option 3: ATOMIC Mode (Molecular Efficiency)**
+```bash
+python jarvis_atomic.py
+```
+Or double-click `start_atomic.bat`
+
+**Option 4: NANO Mode (Microscopic Overhead)**
+```bash
+python jarvis_nano.py
+```
+Or double-click `start_nano.bat`
+
+**Option 5: QUANTUM Mode (Quantum Performance)**
+```bash
+python jarvis_quantum.py
+```
+Or double-click `start_quantum.bat`
+
+**Option 6: ULTIMATE Mode (100% Optimized)**
 ```bash
 python jarvis_ultimate.py
 ```
 Or double-click `start_ultimate.bat`
 
-**Option 2: TURBO Mode (Pre-compiled)**
+**Option 7: TURBO Mode (Pre-compiled)**
 ```bash
 python jarvis_turbo.py
 ```
 Or double-click `start_turbo.bat`
 
-**Option 3: MAX Mode (Minimal Code)**
+**Option 8: MAX Mode (Minimal Code)**
 ```bash
 python jarvis_max.py
 ```
 Or double-click `start_max.bat`
 
-**Option 4: INSTANT Mode (Zero-Delay)**
+**Option 9: INSTANT Mode (Zero-Delay)**
 ```bash
 python jarvis_instant.py
 ```
 Or double-click `start_instant.bat`
 
-**Option 5: Ultra Fast Mode**
+**Option 10: Ultra Fast Mode**
 ```bash
 python jarvis_ultra_fast.py
 ```
 Or double-click `start_ultra_fast.bat`
 
-**Option 6: Fast Mode (Balanced)**
+**Option 11: Fast Mode (Balanced)**
 ```bash
 python jarvis_fast.py
 ```
 Or double-click `start_fast.bat`
 
-**Option 7: Full Mode (All Features)**
+**Option 12: Full Mode (All Features)**
 ```bash
 python jarvis.py
 ```
 
-**Option 8: Background Mode**
+**Option 13: Background Mode**
 ```bash
 python jarvis_background.py
 ```
 Or double-click `start_jarvis_visible.bat`
 
-**Option 9: Silent Background**
+**Option 14: Silent Background**
 Double-click `start_jarvis.bat`
 
 ## Auto-Startup
