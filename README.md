@@ -6,9 +6,30 @@ pip install -r requirements.txt
 ```
 
 ## Run
+
+**Option 1: Normal Mode**
 ```bash
 python jarvis.py
 ```
+
+**Option 2: Background Mode (Recommended)**
+```bash
+python jarvis_background.py
+```
+Or double-click `start_jarvis_visible.bat`
+
+**Option 3: Silent Background (No Window)**
+Double-click `start_jarvis.bat`
+
+## Auto-Startup
+Run this to start JARVIS automatically with Windows:
+```bash
+python install_startup.py
+```
+
+## Hotkeys
+- **Ctrl+Shift+J** - Activate/Deactivate JARVIS
+- **Ctrl+Shift+Q** - Quit JARVIS
 
 ## Language Support
 - **English** - Full support

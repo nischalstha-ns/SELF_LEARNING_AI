@@ -10,3 +10,4 @@ deep-translator
 wikipedia
 pyjokes
 pyperclip
+keyboard
