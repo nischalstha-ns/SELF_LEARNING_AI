@@ -602,10 +602,15 @@ class Jarvis:
             self.speak(greeting)
             print("\n" + "="*70)
             print("जार्विस पूर्ण रूपमा सञ्चालनमा। सबै प्रणाली अनलाइन।")
-            print("JARVIS - Advanced Self-Learning AI Assistant")
+            print("JARVIS - Advanced Self-Learning AI Assistant with Vision")
             print("Bilingual: English | Nepali (नेपाली)")
-            print("Capabilities: System Control | Web Search | File Management")
-            print("             Weather | News | Reminders | Translation | More")
+            print("Capabilities: Vision & Face Recognition | System Control")
+            print("             Web Search | File Management | Weather | News")
+            print("             Reminders | Translation | Camera Access | More")
+            if VISION_AVAILABLE:
+                print("Vision: ✓ Enabled")
+            else:
+                print("Vision: ✗ Disabled (install opencv-python face-recognition)")
             print("="*70 + "\n")
             self.continuous_listen()
         except KeyboardInterrupt:

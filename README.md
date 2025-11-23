@@ -31,14 +31,25 @@ python install_startup.py
 - **Ctrl+Shift+J** - Activate/Deactivate JARVIS
 - **Ctrl+Shift+Q** - Quit JARVIS
 
-## Language Support
-- **English** - Full support
-- **Nepali (नेपाली)** - Full support with auto-detection
-- Speak in either language, JARVIS understands both!
+## Features
+- **Vision & Face Recognition** - Camera access, face learning, scene description
+- **Bilingual** - English & Nepali (नेपाली) with auto-detection
+- **Self-Learning AI** - Learns from web and remembers everything
+- **Full System Control** - Complete PC automation
+- **Always Listening** - Background service with hotkeys
 
 ## Commands / आदेशहरू
 
-**System Control:**
+**Vision & Face Recognition:**
+- Who am I seeing / Who do you see
+- Learn my face / Remember my face
+- Learn face [name]
+- Take photo / Take picture
+- Show camera / Open camera
+- Describe scene / What do you see
+- Stop camera
+
+**System Control:
 - Volume up/down/mute
 - Brightness up/down
 - WiFi on/off
@@ -99,4 +110,10 @@ python install_startup.py
 - "Stop/Exit" - Quit
 
 ## Note
-Requires microphone access.
+Requires microphone and camera access.
+
+## Vision Setup
+For face recognition features:
+```bash
+pip install opencv-python face-recognition numpy
+```

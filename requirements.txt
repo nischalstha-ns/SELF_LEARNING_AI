@@ -11,3 +11,6 @@ wikipedia
 pyjokes
 pyperclip
 keyboard
+opencv-python
+face-recognition
+numpy
