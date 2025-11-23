@@ -110,6 +110,11 @@ python install_startup.py
 - **Ctrl+Shift+Q** - Quit JARVIS
 
 ## Performance Modes
+- **SINGULARITY Mode** - Beyond optimization limits, system-level control
+- **PHOTON Mode** - Light-speed execution, encoded optimization
+- **ATOMIC Mode** - Molecular-level efficiency, multiprocessing
+- **NANO Mode** - Microscopic overhead, dictionary execution
+- **QUANTUM Mode** - Quantum-level performance, system tweaks
 - **ULTIMATE Mode** - 100% optimized, compressed code, instant execution
 - **TURBO Mode** - Pre-compiled commands, ultra-fast startup
 - **MAX Mode** - Minimal overhead, maximum performance
@@ -124,7 +129,7 @@ python install_startup.py
 - **Self-Learning AI** - Learns from web and remembers everything (Full Mode)
 - **Full System Control** - Complete PC automation (All Modes)
 - **Always Listening** - Background service with hotkeys (All Modes)
-- **Optimized Performance** - Up to 10x faster startup and response times
+- **Optimized Performance** - Up to 100x faster startup and response times
 
 ## Commands / आदेशहरू
 
