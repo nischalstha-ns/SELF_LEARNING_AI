@@ -19,30 +19,54 @@ python jarvis_launcher.py
 
 ## Run
 
-**Option 1: Ultra Fast Mode (Recommended for Speed)**
+**Option 1: ULTIMATE Mode (100% Optimized)**
+```bash
+python jarvis_ultimate.py
+```
+Or double-click `start_ultimate.bat`
+
+**Option 2: TURBO Mode (Pre-compiled)**
+```bash
+python jarvis_turbo.py
+```
+Or double-click `start_turbo.bat`
+
+**Option 3: MAX Mode (Minimal Code)**
+```bash
+python jarvis_max.py
+```
+Or double-click `start_max.bat`
+
+**Option 4: INSTANT Mode (Zero-Delay)**
+```bash
+python jarvis_instant.py
+```
+Or double-click `start_instant.bat`
+
+**Option 5: Ultra Fast Mode**
 ```bash
 python jarvis_ultra_fast.py
 ```
 Or double-click `start_ultra_fast.bat`
 
-**Option 2: Fast Mode (Balanced)**
+**Option 6: Fast Mode (Balanced)**
 ```bash
 python jarvis_fast.py
 ```
 Or double-click `start_fast.bat`
 
-**Option 3: Full Mode (All Features)**
+**Option 7: Full Mode (All Features)**
 ```bash
 python jarvis.py
 ```
 
-**Option 4: Background Mode**
+**Option 8: Background Mode**
 ```bash
 python jarvis_background.py
 ```
 Or double-click `start_jarvis_visible.bat`
 
-**Option 5: Silent Background**
+**Option 9: Silent Background**
 Double-click `start_jarvis.bat`
 
 ## Auto-Startup
@@ -56,7 +80,11 @@ python install_startup.py
 - **Ctrl+Shift+Q** - Quit JARVIS
 
 ## Performance Modes
-- **Ultra Fast Mode** - Maximum speed, instant responses, core commands only
+- **ULTIMATE Mode** - 100% optimized, compressed code, instant execution
+- **TURBO Mode** - Pre-compiled commands, ultra-fast startup
+- **MAX Mode** - Minimal overhead, maximum performance
+- **INSTANT Mode** - Zero-delay responses, compressed syntax
+- **Ultra Fast Mode** - Original optimized version
 - **Fast Mode** - Balanced performance with essential features
 - **Full Mode** - Complete feature set with vision and learning
 
@@ -66,7 +94,7 @@ python install_startup.py
 - **Self-Learning AI** - Learns from web and remembers everything (Full Mode)
 - **Full System Control** - Complete PC automation (All Modes)
 - **Always Listening** - Background service with hotkeys (All Modes)
-- **Optimized Performance** - 3x faster startup and response times
+- **Optimized Performance** - Up to 10x faster startup and response times
 
 ## Commands / आदेशहरू
 
