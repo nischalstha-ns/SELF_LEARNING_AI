@@ -15,14 +15,20 @@ from deep_translator import GoogleTranslator
 class Jarvis:
     def __init__(self):
         self.engine = pyttsx3.init()
-        self.engine.setProperty('rate', 180)
+        voices = self.engine.getProperty('voices')
+        self.engine.setProperty('voice', voices[0].id if voices else None)
+        self.engine.setProperty('rate', 190)
+        self.engine.setProperty('volume', 1.0)
         self.recognizer = sr.Recognizer()
+        self.recognizer.energy_threshold = 4000
+        self.recognizer.dynamic_energy_threshold = True
         self.memory_file = 'memory.json'
         self.memory = self.load_memory()
-        self.command_keywords = ['open', 'close', 'search', 'play', 'create', 'delete', 'run', 'stop', 'exit', 'time', 'what', 'how', 'show', 'volume', 'brightness', 'wifi', 'bluetooth', 'shutdown', 'restart', 'lock', 'screenshot']
+        self.command_keywords = ['open', 'close', 'search', 'play', 'create', 'delete', 'run', 'stop', 'exit', 'time', 'what', 'how', 'show', 'volume', 'brightness', 'wifi', 'bluetooth', 'shutdown', 'restart', 'lock', 'screenshot', 'write', 'note', 'remind', 'calculate']
         self.nepali_keywords = ['खोल्नुहोस्', 'बन्द', 'खोज', 'बजाउनुहोस्', 'समय', 'के', 'कसरी', 'भोल्युम', 'वाइफाइ', 'स्क्रिनशट', 'बन्द गर्नुहोस्', 'रिस्टार्ट']
         self.listening = True
         self.current_language = 'en'
+        self.context = []
     
     def speak(self, text, lang=None):
         if lang is None:
@@ -48,13 +54,18 @@ class Jarvis:
     def listen(self):
         with sr.Microphone() as source:
             print("सुन्दै छु... / Listening...")
-            self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
-            audio = self.recognizer.listen(source)
+            self.recognizer.adjust_for_ambient_noise(source, duration=0.3)
+            try:
+                audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=10)
+            except sr.WaitTimeoutError:
+                return ""
+        
         try:
             # Try English first
             text = self.recognizer.recognize_google(audio, language='en-US')
             print(f"You: {text}")
             self.current_language = 'en'
+            self.context.append(text)
             return text
         except:
             try:
@@ -62,6 +73,7 @@ class Jarvis:
                 text = self.recognizer.recognize_google(audio, language='ne-NP')
                 print(f"तपाईं: {text}")
                 self.current_language = 'ne'
+                self.context.append(text)
                 return text
             except:
                 return ""
@@ -179,30 +191,31 @@ class Jarvis:
         elif 'volume down' in lower:
             pyautogui.press('volumedown', presses=5)
             return "Volume decreased"
-        elif 'mute' in lower:
+        elif 'mute' in lower or 'unmute' in lower:
             pyautogui.press('volumemute')
-            return "Muted"
+            return "Volume toggled"
         
         elif 'brightness up' in lower:
-            subprocess.run('powershell (Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1,100)', shell=True)
+            subprocess.run('powershell (Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1,100)', shell=True, capture_output=True)
             return "Brightness increased"
         elif 'brightness down' in lower:
-            subprocess.run('powershell (Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1,30)', shell=True)
+            subprocess.run('powershell (Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1,30)', shell=True, capture_output=True)
             return "Brightness decreased"
         
-        elif 'wifi off' in lower:
-            subprocess.run('netsh interface set interface "Wi-Fi" disabled', shell=True)
+        elif 'wifi off' in lower or 'disable wifi' in lower:
+            subprocess.run('netsh interface set interface "Wi-Fi" disabled', shell=True, capture_output=True)
             return "WiFi disabled"
-        elif 'wifi on' in lower:
-            subprocess.run('netsh interface set interface "Wi-Fi" enabled', shell=True)
+        elif 'wifi on' in lower or 'enable wifi' in lower:
+            subprocess.run('netsh interface set interface "Wi-Fi" enabled', shell=True, capture_output=True)
             return "WiFi enabled"
         
-        elif 'screenshot' in lower:
+        elif 'screenshot' in lower or 'take screenshot' in lower:
             screenshot = pyautogui.screenshot()
-            screenshot.save(f'screenshot_{datetime.now().strftime("%Y%m%d_%H%M%S")}.png')
-            return "Screenshot saved"
+            filename = f'screenshot_{datetime.now().strftime("%Y%m%d_%H%M%S")}.png'
+            screenshot.save(filename)
+            return f"Screenshot saved as {filename}"
         
-        elif 'lock' in lower:
+        elif 'lock' in lower or 'lock computer' in lower:
             subprocess.run('rundll32.exe user32.dll,LockWorkStation', shell=True)
             return "Locking computer"
         
@@ -210,13 +223,31 @@ class Jarvis:
             subprocess.run('shutdown /s /t 5', shell=True)
             return "Shutting down in 5 seconds"
         
-        elif 'restart' in lower:
+        elif 'restart' in lower or 'reboot' in lower:
             subprocess.run('shutdown /r /t 5', shell=True)
             return "Restarting in 5 seconds"
         
-        elif 'running apps' in lower or 'processes' in lower:
-            apps = [p.name() for p in psutil.process_iter()[:5]]
-            return f"Running: {', '.join(apps)}"
+        elif 'cancel shutdown' in lower or 'abort shutdown' in lower:
+            subprocess.run('shutdown /a', shell=True)
+            return "Shutdown cancelled"
+        
+        elif 'running apps' in lower or 'processes' in lower or 'what is running' in lower:
+            apps = [p.name() for p in psutil.process_iter()[:10]]
+            return f"Top processes: {', '.join(apps[:5])}"
+        
+        elif 'battery' in lower or 'power' in lower:
+            battery = psutil.sensors_battery()
+            if battery:
+                return f"Battery at {battery.percent}%, {'charging' if battery.power_plugged else 'not charging'}"
+            return "Battery info not available"
+        
+        elif 'cpu usage' in lower or 'cpu' in lower:
+            cpu = psutil.cpu_percent(interval=1)
+            return f"CPU usage is {cpu}%"
+        
+        elif 'memory usage' in lower or 'ram' in lower:
+            mem = psutil.virtual_memory()
+            return f"Memory usage is {mem.percent}%, {mem.available // (1024**3)} GB available"
         
         return None
     
@@ -231,8 +262,22 @@ class Jarvis:
         # App control
         if 'open' in lower:
             app = lower.split('open')[-1].strip()
+            app_map = {
+                'chrome': 'chrome',
+                'browser': 'chrome',
+                'notepad': 'notepad',
+                'calculator': 'calc',
+                'paint': 'mspaint',
+                'explorer': 'explorer',
+                'cmd': 'cmd',
+                'terminal': 'cmd',
+                'task manager': 'taskmgr',
+                'settings': 'ms-settings:',
+                'control panel': 'control'
+            }
+            app_to_open = app_map.get(app, app)
             try:
-                subprocess.Popen(app, shell=True)
+                subprocess.Popen(app_to_open, shell=True)
                 return f"Opening {app}"
             except:
                 return f"Couldn't open {app}"
@@ -241,6 +286,14 @@ class Jarvis:
             app = lower.split('close')[-1].strip()
             subprocess.run(f'taskkill /IM {app}.exe /F', shell=True, capture_output=True)
             return f"Closing {app}"
+        
+        elif 'minimize' in lower or 'hide' in lower:
+            pyautogui.hotkey('win', 'd')
+            return "Minimized all windows"
+        
+        elif 'maximize' in lower or 'restore' in lower:
+            pyautogui.hotkey('win', 'd')
+            return "Restored windows"
         
         # Web actions
         elif 'search' in lower:
@@ -267,6 +320,37 @@ class Jarvis:
         
         elif 'time' in lower:
             return datetime.now().strftime("It's %I:%M %p")
+        
+        elif 'date' in lower:
+            return datetime.now().strftime("Today is %A, %B %d, %Y")
+        
+        elif 'write' in lower or 'note' in lower or 'create note' in lower:
+            self.speak("What should I write?")
+            note_text = self.listen()
+            if note_text:
+                filename = f"note_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+                with open(filename, 'w', encoding='utf-8') as f:
+                    f.write(note_text)
+                return f"Note saved as {filename}"
+            return "I didn't catch that"
+        
+        elif 'calculate' in lower or 'math' in lower:
+            try:
+                expr = lower.replace('calculate', '').replace('math', '').replace('what is', '').strip()
+                expr = expr.replace('plus', '+').replace('minus', '-').replace('times', '*').replace('divided by', '/')
+                result = eval(expr)
+                return f"The answer is {result}"
+            except:
+                return "I couldn't calculate that"
+        
+        elif 'joke' in lower:
+            jokes = [
+                "Why do programmers prefer dark mode? Because light attracts bugs!",
+                "Why did the AI go to school? To improve its learning rate!",
+                "What's an AI's favorite snack? Microchips!"
+            ]
+            import random
+            return random.choice(jokes)
         
         elif 'what do you know' in lower or 'tell me about' in lower:
             topic = lower.split('about')[-1].strip() if 'about' in lower else lower.split('know')[-1].strip()
@@ -350,8 +434,12 @@ class Jarvis:
                     break
     
     def run(self):
-        self.speak("JARVIS fully operational. All systems online. I'm always listening")
-        print("जार्विस पूर्ण रूपमा सञ्चालनमा। सबै प्रणाली अनलाइन। म सधैं सुन्दै छु")
+        self.speak("JARVIS fully operational. All systems online. Ready to assist")
+        print("\n" + "="*60)
+        print("जार्विस पूर्ण रूपमा सञ्चालनमा। सबै प्रणाली अनलाइन।")
+        print("JARVIS - Self-Learning AI Assistant")
+        print("Speak in English or Nepali (नेपाली)")
+        print("="*60 + "\n")
         self.continuous_listen()
 
 if __name__ == "__main__":
