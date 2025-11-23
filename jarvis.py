@@ -8,9 +8,18 @@ import requests
 import psutil
 import pyautogui
 import threading
-from datetime import datetime
+import random
+import re
+import shutil
+from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 from deep_translator import GoogleTranslator
+try:
+    import wikipedia
+    import pyjokes
+    import pyperclip
+except:
+    pass
 
 class Jarvis:
     def __init__(self):
@@ -29,54 +38,60 @@ class Jarvis:
         self.listening = True
         self.current_language = 'en'
         self.context = []
+        self.reminders = []
+        self.user_name = self.memory.get('user_name', 'Sir')
     
     def speak(self, text, lang=None):
-        if lang is None:
-            lang = self.current_language
-        
-        # Translate to Nepali if needed
-        if lang == 'ne':
-            try:
-                nepali_text = GoogleTranslator(source='en', target='ne').translate(text)
-                print(f"जार्विस: {nepali_text}")
-                # Use English TTS but show Nepali text
-                self.engine.say(text)
-                self.engine.runAndWait()
-            except:
+        try:
+            if lang is None:
+                lang = self.current_language
+            
+            if lang == 'ne':
+                try:
+                    nepali_text = GoogleTranslator(source='en', target='ne').translate(text)
+                    print(f"जार्विस: {nepali_text}")
+                    self.engine.say(text)
+                    self.engine.runAndWait()
+                except:
+                    print(f"JARVIS: {text}")
+                    self.engine.say(text)
+                    self.engine.runAndWait()
+            else:
                 print(f"JARVIS: {text}")
                 self.engine.say(text)
                 self.engine.runAndWait()
-        else:
+        except Exception as e:
             print(f"JARVIS: {text}")
-            self.engine.say(text)
-            self.engine.runAndWait()
+            print(f"[Error] Speech engine: {e}")
     
     def listen(self):
-        with sr.Microphone() as source:
-            print("सुन्दै छु... / Listening...")
-            self.recognizer.adjust_for_ambient_noise(source, duration=0.3)
-            try:
-                audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=10)
-            except sr.WaitTimeoutError:
-                return ""
-        
         try:
-            # Try English first
-            text = self.recognizer.recognize_google(audio, language='en-US')
-            print(f"You: {text}")
-            self.current_language = 'en'
-            self.context.append(text)
-            return text
-        except:
+            with sr.Microphone() as source:
+                print("सुन्दै छु... / Listening...")
+                self.recognizer.adjust_for_ambient_noise(source, duration=0.3)
+                try:
+                    audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=10)
+                except sr.WaitTimeoutError:
+                    return ""
+            
             try:
-                # Try Nepali
-                text = self.recognizer.recognize_google(audio, language='ne-NP')
-                print(f"तपाईं: {text}")
-                self.current_language = 'ne'
+                text = self.recognizer.recognize_google(audio, language='en-US')
+                print(f"You: {text}")
+                self.current_language = 'en'
                 self.context.append(text)
                 return text
             except:
-                return ""
+                try:
+                    text = self.recognizer.recognize_google(audio, language='ne-NP')
+                    print(f"तपाईं: {text}")
+                    self.current_language = 'ne'
+                    self.context.append(text)
+                    return text
+                except:
+                    return ""
+        except Exception as e:
+            print(f"[Error] Microphone issue: {e}")
+            return ""
     
     def load_memory(self):
         if os.path.exists(self.memory_file):
@@ -97,7 +112,6 @@ class Jarvis:
         return text
     
     def detect_intent(self, text):
-        # Translate Nepali to English for processing
         english_text = self.translate_to_english(text)
         lower = english_text.lower()
         
@@ -113,6 +127,7 @@ class Jarvis:
         if 'my name is' in lower or "i'm" in lower or 'i am' in lower:
             key = 'user_name'
             value = text.split('is')[-1].strip() if 'is' in lower else text.split("i'm")[-1].strip() if "i'm" in lower else text.split('am')[-1].strip()
+            self.user_name = value
         elif 'my' in lower:
             parts = lower.split('my', 1)[1].split('is')
             key = parts[0].strip() if len(parts) > 0 else 'info'
@@ -124,7 +139,21 @@ class Jarvis:
     
     def search_web(self, query):
         try:
-            # Try DuckDuckGo API first
+            try:
+                result = wikipedia.summary(query, sentences=3, auto_suggest=True)
+                if result and len(result) > 20:
+                    self.learn(query, result)
+                    return result
+            except wikipedia.exceptions.DisambiguationError as e:
+                try:
+                    result = wikipedia.summary(e.options[0], sentences=2)
+                    self.learn(query, result)
+                    return result
+                except:
+                    pass
+            except:
+                pass
+            
             url = f"https://api.duckduckgo.com/?q={query}&format=json"
             response = requests.get(url, timeout=5)
             data = response.json()
@@ -134,7 +163,6 @@ class Jarvis:
                 self.learn(query, answer)
                 return answer
             
-            # Try Wikipedia API
             wiki_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{query.replace(' ', '_')}"
             response = requests.get(wiki_url, timeout=5)
             if response.status_code == 200:
@@ -144,38 +172,91 @@ class Jarvis:
                     self.learn(query, answer)
                     return answer
             
-            # Fallback to Google scraping
             search_url = f"https://www.google.com/search?q={query}"
-            headers = {'User-Agent': 'Mozilla/5.0'}
+            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
             response = requests.get(search_url, headers=headers, timeout=5)
             soup = BeautifulSoup(response.text, 'html.parser')
             
-            # Try featured snippet
-            snippet = soup.find('div', class_='BNeawe')
+            snippet = soup.find('div', class_='BNeawe') or soup.find('span', class_='hgKElc')
             if snippet:
                 answer = snippet.text
-                self.learn(query, answer)
-                return answer
+                if len(answer) > 20:
+                    self.learn(query, answer)
+                    return answer
             
-            return "I couldn't find reliable information about that"
-        except:
+            return "I couldn't find reliable information about that. Try rephrasing your question."
+        except Exception as e:
+            print(f"[Error] Web search failed: {e}")
             return "I'm having trouble accessing the web right now"
     
+    def get_weather(self, city=""):
+        try:
+            if not city:
+                city = self.memory.get('user_location', 'Kathmandu')
+            url = f"https://wttr.in/{city}?format=%C+%t+%w"
+            response = requests.get(url, timeout=5)
+            return f"Weather in {city}: {response.text}"
+        except:
+            return "Couldn't fetch weather information"
+    
+    def get_news(self):
+        try:
+            url = "https://news.google.com/rss"
+            response = requests.get(url, timeout=5)
+            soup = BeautifulSoup(response.text, 'xml')
+            items = soup.find_all('item')[:5]
+            news = [item.title.text for item in items]
+            return "Top news: " + ". ".join(news[:3])
+        except:
+            return "Couldn't fetch news"
+    
+    def file_operations(self, command):
+        lower = command.lower()
+        
+        if 'create folder' in lower or 'make folder' in lower:
+            folder_name = lower.split('folder')[-1].strip()
+            try:
+                os.makedirs(folder_name, exist_ok=True)
+                return f"Folder {folder_name} created"
+            except:
+                return "Couldn't create folder"
+        
+        elif 'delete file' in lower or 'remove file' in lower:
+            file_name = lower.split('file')[-1].strip()
+            try:
+                os.remove(file_name)
+                return f"File {file_name} deleted"
+            except:
+                return "Couldn't delete file"
+        
+        elif 'list files' in lower or 'show files' in lower:
+            files = os.listdir('.')[:10]
+            return f"Files: {', '.join(files[:5])}"
+        
+        return None
+    
+    def set_reminder(self, text):
+        self.reminders.append({'text': text, 'time': datetime.now() + timedelta(minutes=5)})
+        return "Reminder set for 5 minutes"
+    
+    def check_reminders(self):
+        current_time = datetime.now()
+        for reminder in self.reminders:
+            if current_time >= reminder['time']:
+                self.speak(f"Reminder: {reminder['text']}")
+                self.reminders.remove(reminder)
+    
     def learn(self, key, value):
-        """Store knowledge in memory"""
         self.memory[key.lower()] = value
         self.save_memory()
         print(f"[LEARNED] {key[:50]}...")
     
     def recall(self, query):
-        """Retrieve knowledge from memory"""
         query_lower = query.lower()
         
-        # Exact match
         if query_lower in self.memory:
             return self.memory[query_lower]
         
-        # Partial match
         for key in self.memory:
             if query_lower in key or key in query_lower:
                 return self.memory[key]
@@ -254,33 +335,36 @@ class Jarvis:
     def execute_action(self, command):
         lower = command.lower()
         
-        # System control
+        self.check_reminders()
+        
+        file_response = self.file_operations(command)
+        if file_response:
+            return file_response
+        
         sys_response = self.system_control(command)
         if sys_response:
             return sys_response
         
-        # App control
         if 'open' in lower:
             app = lower.split('open')[-1].strip()
             app_map = {
-                'chrome': 'chrome',
-                'browser': 'chrome',
-                'notepad': 'notepad',
-                'calculator': 'calc',
-                'paint': 'mspaint',
-                'explorer': 'explorer',
-                'cmd': 'cmd',
-                'terminal': 'cmd',
-                'task manager': 'taskmgr',
-                'settings': 'ms-settings:',
-                'control panel': 'control'
+                'chrome': 'chrome', 'google': 'chrome', 'browser': 'chrome',
+                'edge': 'msedge', 'firefox': 'firefox',
+                'notepad': 'notepad', 'calculator': 'calc', 'paint': 'mspaint',
+                'explorer': 'explorer', 'file explorer': 'explorer',
+                'cmd': 'cmd', 'command prompt': 'cmd', 'terminal': 'cmd',
+                'powershell': 'powershell', 'task manager': 'taskmgr',
+                'settings': 'ms-settings:', 'control panel': 'control',
+                'word': 'winword', 'excel': 'excel', 'powerpoint': 'powerpnt',
+                'outlook': 'outlook', 'spotify': 'spotify', 'discord': 'discord',
+                'vscode': 'code', 'visual studio code': 'code'
             }
             app_to_open = app_map.get(app, app)
             try:
                 subprocess.Popen(app_to_open, shell=True)
                 return f"Opening {app}"
             except:
-                return f"Couldn't open {app}"
+                return f"Couldn't open {app}. Make sure it's installed."
         
         elif 'close' in lower:
             app = lower.split('close')[-1].strip()
@@ -295,7 +379,6 @@ class Jarvis:
             pyautogui.hotkey('win', 'd')
             return "Restored windows"
         
-        # Web actions
         elif 'search' in lower:
             query = lower.split('search')[-1].strip()
             webbrowser.open(f'https://www.google.com/search?q={query}')
@@ -306,14 +389,11 @@ class Jarvis:
             webbrowser.open(f'https://www.youtube.com/results?search_query={query}')
             return f"Playing {query}"
         
-        # Knowledge queries - Self-learning mode
         elif any(word in lower for word in ['what is', 'who is', 'where is', 'when is', 'how to', 'why', 'tell me', 'explain']):
-            # Check memory first (recall)
             remembered = self.recall(command)
             if remembered:
                 return f"I remember: {remembered}"
             
-            # Don't know - search web and learn
             self.speak("Let me search that for you")
             result = self.search_web(command)
             return result
@@ -336,31 +416,102 @@ class Jarvis:
         
         elif 'calculate' in lower or 'math' in lower:
             try:
-                expr = lower.replace('calculate', '').replace('math', '').replace('what is', '').strip()
-                expr = expr.replace('plus', '+').replace('minus', '-').replace('times', '*').replace('divided by', '/')
-                result = eval(expr)
+                expr = lower.replace('calculate', '').replace('math', '').replace('what is', '').replace('equals', '').strip()
+                expr = expr.replace('plus', '+').replace('minus', '-').replace('times', '*').replace('multiply', '*')
+                expr = expr.replace('divided by', '/').replace('divide', '/').replace('power', '**').replace('squared', '**2')
+                expr = expr.replace('x', '*').replace('÷', '/')
+                result = eval(expr, {"__builtins__": {}}, {})
                 return f"The answer is {result}"
             except:
-                return "I couldn't calculate that"
+                return "I couldn't calculate that. Try using numbers and operators like plus, minus, times, divided by."
         
         elif 'joke' in lower:
-            jokes = [
-                "Why do programmers prefer dark mode? Because light attracts bugs!",
-                "Why did the AI go to school? To improve its learning rate!",
-                "What's an AI's favorite snack? Microchips!"
-            ]
-            import random
-            return random.choice(jokes)
+            try:
+                return pyjokes.get_joke()
+            except:
+                jokes = [
+                    "Why do programmers prefer dark mode? Because light attracts bugs!",
+                    "Why did the AI go to school? To improve its learning rate!",
+                    "What's an AI's favorite snack? Microchips!",
+                    "Why do Java developers wear glasses? Because they don't C sharp!",
+                    "How many programmers does it take to change a light bulb? None, that's a hardware problem!"
+                ]
+                return random.choice(jokes)
+        
+        elif 'weather' in lower:
+            city = lower.split('in')[-1].strip() if 'in' in lower else ""
+            return self.get_weather(city)
+        
+        elif 'news' in lower:
+            return self.get_news()
+        
+        elif 'remind me' in lower or 'reminder' in lower:
+            reminder_text = lower.replace('remind me', '').replace('to', '').strip()
+            return self.set_reminder(reminder_text)
+        
+        elif 'copy' in lower and 'clipboard' in lower:
+            try:
+                text = pyperclip.paste()
+                return f"Clipboard contains: {text[:100]}"
+            except:
+                return "Couldn't access clipboard"
+        
+        elif 'type' in lower or 'write text' in lower:
+            text = lower.replace('type', '').replace('write text', '').strip()
+            pyautogui.write(text)
+            return f"Typed: {text}"
+        
+        elif 'press' in lower:
+            key = lower.split('press')[-1].strip()
+            pyautogui.press(key)
+            return f"Pressed {key}"
+        
+        elif 'location' in lower or 'where am i' in lower:
+            try:
+                response = requests.get('https://ipapi.co/json/', timeout=3)
+                data = response.json()
+                location = f"{data.get('city', 'Unknown')}, {data.get('country_name', 'Unknown')}"
+                self.memory['user_location'] = data.get('city', 'Unknown')
+                self.save_memory()
+                return f"You are in {location}"
+            except:
+                return "Couldn't determine location"
+        
+        elif 'ip address' in lower:
+            try:
+                response = requests.get('https://api.ipify.org', timeout=3)
+                return f"Your IP address is {response.text}"
+            except:
+                return "Couldn't get IP address"
+        
+        elif 'translate' in lower:
+            text_to_translate = lower.split('translate')[-1].strip()
+            try:
+                translated = GoogleTranslator(source='auto', target='ne').translate(text_to_translate)
+                return f"Translation: {translated}"
+            except:
+                return "Couldn't translate"
+        
+        elif 'system info' in lower or 'computer info' in lower:
+            cpu = psutil.cpu_percent()
+            mem = psutil.virtual_memory().percent
+            disk = psutil.disk_usage('/').percent
+            return f"CPU: {cpu}%, RAM: {mem}%, Disk: {disk}%"
+        
+        elif 'empty recycle bin' in lower or 'clear trash' in lower:
+            try:
+                subprocess.run('rd /s /q %systemdrive%\\$Recycle.bin', shell=True, capture_output=True)
+                return "Recycle bin emptied"
+            except:
+                return "Couldn't empty recycle bin"
         
         elif 'what do you know' in lower or 'tell me about' in lower:
             topic = lower.split('about')[-1].strip() if 'about' in lower else lower.split('know')[-1].strip()
             
-            # Check memory first
             remembered = self.recall(topic)
             if remembered:
                 return remembered
             
-            # Search and learn
             self.speak("I don't know that yet. Let me learn it")
             result = self.search_web(topic)
             return result
@@ -375,9 +526,9 @@ class Jarvis:
                 return "Got it, I've updated my memory"
             return "I didn't catch that"
         
-        elif 'stop listening' in lower or 'pause' in lower:
+        elif 'stop listening' in lower or 'pause' in lower or 'sleep' in lower:
             self.listening = False
-            return "I'll stop listening. Say 'hey Jarvis' to wake me"
+            return f"Going to sleep. Say 'hey Jarvis' to wake me, {self.user_name}"
         
         elif 'stop' in lower or 'exit' in lower or 'quit' in lower:
             return None
@@ -388,7 +539,6 @@ class Jarvis:
         if not text:
             return True
         
-        # Translate Nepali to English for processing
         english_text = self.translate_to_english(text)
         
         intent = self.detect_intent(english_text)
@@ -403,9 +553,7 @@ class Jarvis:
                 self.speak("Shutting down", self.current_language)
                 return False
             
-            # If response indicates unknown command, try to learn from web
             if "not sure" in response.lower() or "rephrase" in response.lower():
-                # Check if it's a question
                 if any(word in english_text.lower() for word in ['what', 'who', 'where', 'when', 'how', 'why']):
                     remembered = self.recall(english_text)
                     if remembered:
@@ -418,29 +566,54 @@ class Jarvis:
         return True
     
     def continuous_listen(self):
+        error_count = 0
         while True:
-            if not self.listening:
+            try:
+                if not self.listening:
+                    text = self.listen()
+                    if text:
+                        lower = text.lower()
+                        if 'hey jarvis' in lower or 'हे जार्विस' in lower or 'जार्विस' in lower:
+                            self.listening = True
+                            self.speak("Yes, I'm here", self.current_language)
+                            error_count = 0
+                    continue
+                
                 text = self.listen()
                 if text:
-                    lower = text.lower()
-                    if 'hey jarvis' in lower or 'हे जार्विस' in lower or 'जार्विस' in lower:
-                        self.listening = True
-                        self.speak("Yes, I'm here", self.current_language)
-                continue
-            
-            text = self.listen()
-            if text:
-                if not self.process(text):
+                    if not self.process(text):
+                        break
+                    error_count = 0
+                else:
+                    error_count += 1
+                    if error_count > 10:
+                        print("[Warning] Multiple failed attempts. Check microphone.")
+                        error_count = 0
+            except Exception as e:
+                print(f"[Error] Listening loop: {e}")
+                error_count += 1
+                if error_count > 5:
+                    self.speak("I'm experiencing technical difficulties")
                     break
     
     def run(self):
-        self.speak("JARVIS fully operational. All systems online. Ready to assist")
-        print("\n" + "="*60)
-        print("जार्विस पूर्ण रूपमा सञ्चालनमा। सबै प्रणाली अनलाइन।")
-        print("JARVIS - Self-Learning AI Assistant")
-        print("Speak in English or Nepali (नेपाली)")
-        print("="*60 + "\n")
-        self.continuous_listen()
+        try:
+            greeting = f"JARVIS fully operational. All systems online. Ready to assist, {self.user_name}"
+            self.speak(greeting)
+            print("\n" + "="*70)
+            print("जार्विस पूर्ण रूपमा सञ्चालनमा। सबै प्रणाली अनलाइन।")
+            print("JARVIS - Advanced Self-Learning AI Assistant")
+            print("Bilingual: English | Nepali (नेपाली)")
+            print("Capabilities: System Control | Web Search | File Management")
+            print("             Weather | News | Reminders | Translation | More")
+            print("="*70 + "\n")
+            self.continuous_listen()
+        except KeyboardInterrupt:
+            self.speak("Shutting down gracefully")
+            print("\n[✓] JARVIS stopped by user")
+        except Exception as e:
+            print(f"\n[✗] Fatal error: {e}")
+            self.speak("Critical error occurred. Shutting down")
 
 if __name__ == "__main__":
     jarvis = Jarvis()
