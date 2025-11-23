@@ -139,6 +139,7 @@ class Jarvis:
     
     def search_web(self, query):
         try:
+            # Wikipedia - Most reliable
             try:
                 result = wikipedia.summary(query, sentences=3, auto_suggest=True)
                 if result and len(result) > 20:
@@ -154,6 +155,7 @@ class Jarvis:
             except:
                 pass
             
+            # DuckDuckGo Instant Answer API
             url = f"https://api.duckduckgo.com/?q={query}&format=json"
             response = requests.get(url, timeout=5)
             data = response.json()
@@ -163,6 +165,7 @@ class Jarvis:
                 self.learn(query, answer)
                 return answer
             
+            # Wikipedia API fallback
             wiki_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{query.replace(' ', '_')}"
             response = requests.get(wiki_url, timeout=5)
             if response.status_code == 200:
@@ -172,19 +175,38 @@ class Jarvis:
                     self.learn(query, answer)
                     return answer
             
+            # Google scraping - Enhanced
             search_url = f"https://www.google.com/search?q={query}"
-            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
             response = requests.get(search_url, headers=headers, timeout=5)
             soup = BeautifulSoup(response.text, 'html.parser')
             
-            snippet = soup.find('div', class_='BNeawe') or soup.find('span', class_='hgKElc')
-            if snippet:
-                answer = snippet.text
-                if len(answer) > 20:
+            # Try multiple selectors for better results
+            selectors = [
+                ('div', 'BNeawe'),
+                ('span', 'hgKElc'),
+                ('div', 'kCrYT'),
+                ('div', 'Z0LcW'),
+                ('span', 'aCOpRe')
+            ]
+            
+            for tag, class_name in selectors:
+                snippet = soup.find(tag, class_=class_name)
+                if snippet and len(snippet.text) > 20:
+                    answer = snippet.text
                     self.learn(query, answer)
                     return answer
             
-            return "I couldn't find reliable information about that. Try rephrasing your question."
+            # Try featured snippet
+            featured = soup.find('div', {'data-attrid': 'kc:/common:answer'})
+            if featured:
+                answer = featured.text
+                self.learn(query, answer)
+                return answer
+            
+            return "I couldn't find reliable information. Opening browser for manual search."
         except Exception as e:
             print(f"[Error] Web search failed: {e}")
             return "I'm having trouble accessing the web right now"
@@ -379,23 +401,49 @@ class Jarvis:
             pyautogui.hotkey('win', 'd')
             return "Restored windows"
         
-        elif 'search' in lower:
-            query = lower.split('search')[-1].strip()
-            webbrowser.open(f'https://www.google.com/search?q={query}')
-            return f"Searching for {query}"
+        elif 'search' in lower or 'google' in lower or 'look up' in lower:
+            query = lower.replace('search', '').replace('google', '').replace('look up', '').replace('for', '').strip()
+            
+            # Try to get answer first
+            if any(word in lower for word in ['what', 'who', 'where', 'when', 'how', 'why']):
+                remembered = self.recall(query)
+                if remembered:
+                    return f"I remember: {remembered}"
+                
+                self.speak("Searching the web")
+                result = self.search_web(query)
+                
+                # If no good result, open browser
+                if "couldn't find" in result.lower() or "trouble" in result.lower():
+                    webbrowser.open(f'https://www.google.com/search?q={query}')
+                    return f"Opened browser search for {query}"
+                
+                return result
+            else:
+                # Direct browser search for non-question queries
+                webbrowser.open(f'https://www.google.com/search?q={query}')
+                return f"Searching for {query}"
         
         elif 'play' in lower:
             query = lower.split('play')[-1].strip()
             webbrowser.open(f'https://www.youtube.com/results?search_query={query}')
             return f"Playing {query}"
         
-        elif any(word in lower for word in ['what is', 'who is', 'where is', 'when is', 'how to', 'why', 'tell me', 'explain']):
+        elif any(word in lower for word in ['what is', 'who is', 'where is', 'when is', 'how to', 'why', 'tell me', 'explain', 'define']):
+            # Check memory first
             remembered = self.recall(command)
             if remembered:
                 return f"I remember: {remembered}"
             
-            self.speak("Let me search that for you")
+            # Search web and learn
+            self.speak("Searching the web for you")
             result = self.search_web(command)
+            
+            # If search failed, open browser
+            if "couldn't find" in result.lower() or "trouble" in result.lower():
+                webbrowser.open(f'https://www.google.com/search?q={command}')
+                return f"I opened a browser search. I'll learn from this for next time."
+            
             return result
         
         elif 'time' in lower:
