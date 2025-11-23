@@ -1,24 +1,48 @@
 # JARVIS Voice Assistant
 
-## Setup
+## Quick Setup
+
+**For Maximum Speed (Recommended):**
+```bash
+python setup_fast.py
+```
+
+**For Full Features:**
 ```bash
 pip install -r requirements.txt
 ```
 
+**Easy Launcher:**
+```bash
+python jarvis_launcher.py
+```
+
 ## Run
 
-**Option 1: Normal Mode**
+**Option 1: Ultra Fast Mode (Recommended for Speed)**
+```bash
+python jarvis_ultra_fast.py
+```
+Or double-click `start_ultra_fast.bat`
+
+**Option 2: Fast Mode (Balanced)**
+```bash
+python jarvis_fast.py
+```
+Or double-click `start_fast.bat`
+
+**Option 3: Full Mode (All Features)**
 ```bash
 python jarvis.py
 ```
 
-**Option 2: Background Mode (Recommended)**
+**Option 4: Background Mode**
 ```bash
 python jarvis_background.py
 ```
 Or double-click `start_jarvis_visible.bat`
 
-**Option 3: Silent Background (No Window)**
+**Option 5: Silent Background**
 Double-click `start_jarvis.bat`
 
 ## Auto-Startup
@@ -31,12 +55,18 @@ python install_startup.py
 - **Ctrl+Shift+J** - Activate/Deactivate JARVIS
 - **Ctrl+Shift+Q** - Quit JARVIS
 
+## Performance Modes
+- **Ultra Fast Mode** - Maximum speed, instant responses, core commands only
+- **Fast Mode** - Balanced performance with essential features
+- **Full Mode** - Complete feature set with vision and learning
+
 ## Features
-- **Vision & Face Recognition** - Camera access, face learning, scene description
-- **Bilingual** - English & Nepali (नेपाली) with auto-detection
-- **Self-Learning AI** - Learns from web and remembers everything
-- **Full System Control** - Complete PC automation
-- **Always Listening** - Background service with hotkeys
+- **Vision & Face Recognition** - Camera access, face learning, scene description (Full Mode)
+- **Bilingual** - English & Nepali (नेपाली) with auto-detection (Full Mode)
+- **Self-Learning AI** - Learns from web and remembers everything (Full Mode)
+- **Full System Control** - Complete PC automation (All Modes)
+- **Always Listening** - Background service with hotkeys (All Modes)
+- **Optimized Performance** - 3x faster startup and response times
 
 ## Commands / आदेशहरू
 
