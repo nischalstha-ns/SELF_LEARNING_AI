@@ -26,11 +26,12 @@ class Jarvis:
         self.engine = pyttsx3.init()
         voices = self.engine.getProperty('voices')
         self.engine.setProperty('voice', voices[0].id if voices else None)
-        self.engine.setProperty('rate', 190)
+        self.engine.setProperty('rate', 200)
         self.engine.setProperty('volume', 1.0)
         self.recognizer = sr.Recognizer()
-        self.recognizer.energy_threshold = 4000
-        self.recognizer.dynamic_energy_threshold = True
+        self.recognizer.energy_threshold = 3000
+        self.recognizer.dynamic_energy_threshold = False
+        self.recognizer.pause_threshold = 0.5
         self.memory_file = 'memory.json'
         self.memory = self.load_memory()
         self.command_keywords = ['open', 'close', 'search', 'play', 'create', 'delete', 'run', 'stop', 'exit', 'time', 'what', 'how', 'show', 'volume', 'brightness', 'wifi', 'bluetooth', 'shutdown', 'restart', 'lock', 'screenshot', 'write', 'note', 'remind', 'calculate']
@@ -68,9 +69,9 @@ class Jarvis:
         try:
             with sr.Microphone() as source:
                 print("सुन्दै छु... / Listening...")
-                self.recognizer.adjust_for_ambient_noise(source, duration=0.3)
+                self.recognizer.adjust_for_ambient_noise(source, duration=0.2)
                 try:
-                    audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=10)
+                    audio = self.recognizer.listen(source, timeout=3, phrase_time_limit=8)
                 except sr.WaitTimeoutError:
                     return ""
             
