@@ -24,35 +24,56 @@ python jarvis.py
 - Screenshot
 - Lock/Shutdown/Restart/Cancel shutdown
 - Battery status
-- CPU/Memory usage
+- CPU/Memory/Disk usage
+- System info
 - Show running apps
 - Minimize/Maximize windows
+- Empty recycle bin
 
 **App Control:**
 - Open/close [app] (Chrome, Notepad, Calculator, Paint, etc.)
+- Type [text]
+- Press [key]
+
+**File Management:**
+- Create folder [name]
+- Delete file [name]
+- List files
+- Copy/Move files
 
 **Web & Knowledge:**
 - Search [query]
 - Play [video]
 - What/Who/Where/When/How/Why [question] - Auto web search & learn
 - Tell me about [topic]
+- Weather [in city]
+- News
+- Translate [text]
 
 **Productivity:**
 - Write/create note
 - Calculate [math expression]
+- Remind me to [task]
 - What time is it
 - What's the date
 - Tell me a joke
+- Copy clipboard
+
+**Location & Network:**
+- Where am I
+- IP address
+- Weather in [city]
 
 **Learning:**
 - Auto-learns from web searches
 - Auto-learns from statements ("My name is...")
 - Correct me - Updates memory
 - Remembers everything permanently
+- Context-aware conversations
 
 **Conversation:**
 - Always listening mode
-- Context-aware responses
+- Bilingual (English/Nepali)
 - "Stop listening" - Pause (wake with "Hey Jarvis")
 - "Stop/Exit" - Quit
 
