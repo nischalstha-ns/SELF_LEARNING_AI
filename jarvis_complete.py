@@ -1,7 +1,7 @@
 """
 JARVIS - Complete AI Voice Assistant
-All-in-one file with all features integrated
-Version: 2.0 Complete Edition
+Production-Ready All-in-One Edition
+Version: 2.0 Final
 """
 
 import speech_recognition as sr
@@ -15,17 +15,28 @@ import psutil
 import pyautogui
 import threading
 import random
-import re
-import shutil
 import ast
+import operator
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 from deep_translator import GoogleTranslator
 
 try:
     import wikipedia
+except:
+    wikipedia = None
+
+try:
     import pyjokes
+except:
+    pyjokes = None
+
+try:
     import pyperclip
+except:
+    pyperclip = None
+
+try:
     import cv2
     import face_recognition
     import numpy as np
@@ -33,154 +44,197 @@ try:
     VISION_AVAILABLE = True
 except:
     VISION_AVAILABLE = False
-    print("[Warning] Vision module not available. Install: opencv-python face-recognition")
 
 class VisionModule:
     def __init__(self):
+        if not VISION_AVAILABLE:
+            return
         self.camera = None
         self.known_faces = {}
         self.faces_file = 'known_faces.pkl'
         self.load_known_faces()
         
     def load_known_faces(self):
-        if os.path.exists(self.faces_file):
-            with open(self.faces_file, 'rb') as f:
-                self.known_faces = pickle.load(f)
+        try:
+            if os.path.exists(self.faces_file):
+                with open(self.faces_file, 'rb') as f:
+                    self.known_faces = pickle.load(f)
+        except:
+            self.known_faces = {}
     
     def save_known_faces(self):
-        with open(self.faces_file, 'wb') as f:
-            pickle.dump(self.known_faces, f)
+        try:
+            with open(self.faces_file, 'wb') as f:
+                pickle.dump(self.known_faces, f)
+        except:
+            pass
     
     def start_camera(self):
-        if self.camera is None:
-            self.camera = cv2.VideoCapture(0)
-        return self.camera.isOpened()
+        try:
+            if self.camera is None:
+                self.camera = cv2.VideoCapture(0)
+            return self.camera.isOpened()
+        except:
+            return False
     
     def stop_camera(self):
-        if self.camera:
-            self.camera.release()
-            cv2.destroyAllWindows()
-            self.camera = None
+        try:
+            if self.camera:
+                self.camera.release()
+                cv2.destroyAllWindows()
+                self.camera = None
+        except:
+            pass
     
     def capture_frame(self):
-        if not self.start_camera():
+        try:
+            if not self.start_camera():
+                return None
+            ret, frame = self.camera.read()
+            return frame if ret else None
+        except:
             return None
-        ret, frame = self.camera.read()
-        return frame if ret else None
     
     def detect_faces(self, frame):
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        face_locations = face_recognition.face_locations(rgb_frame)
-        face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
-        return face_locations, face_encodings
+        try:
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            face_locations = face_recognition.face_locations(rgb_frame)
+            face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
+            return face_locations, face_encodings
+        except:
+            return [], []
     
     def recognize_face(self, face_encoding):
-        if not self.known_faces:
+        try:
+            if not self.known_faces:
+                return "Unknown"
+            
+            for name, known_encoding in self.known_faces.items():
+                matches = face_recognition.compare_faces([known_encoding], face_encoding, tolerance=0.6)
+                if matches[0]:
+                    return name
             return "Unknown"
-        
-        for name, known_encoding in self.known_faces.items():
-            matches = face_recognition.compare_faces([known_encoding], face_encoding, tolerance=0.6)
-            if matches[0]:
-                return name
-        return "Unknown"
+        except:
+            return "Unknown"
     
     def learn_face(self, name):
-        frame = self.capture_frame()
-        if frame is None:
-            return False
-        
-        face_locations, face_encodings = self.detect_faces(frame)
-        
-        if len(face_encodings) == 0:
-            return False
-        
-        self.known_faces[name] = face_encodings[0]
-        self.save_known_faces()
-        cv2.imwrite(f"face_{name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg", frame)
-        return True
-    
-    def who_am_i_seeing(self):
-        frame = self.capture_frame()
-        if frame is None:
-            return "Camera not available"
-        
-        face_locations, face_encodings = self.detect_faces(frame)
-        
-        if len(face_encodings) == 0:
-            return "No faces detected"
-        
-        names = [self.recognize_face(enc) for enc in face_encodings]
-        
-        if len(names) == 1:
-            return f"I see {names[0]}"
-        else:
-            return f"I see {len(names)} people: {', '.join(names)}"
-    
-    def show_camera_feed(self, duration=5):
-        if not self.start_camera():
-            return False
-        
-        start_time = datetime.now()
-        while (datetime.now() - start_time).seconds < duration:
+        try:
             frame = self.capture_frame()
             if frame is None:
-                break
+                return False
             
             face_locations, face_encodings = self.detect_faces(frame)
             
-            for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
-                name = self.recognize_face(face_encoding)
-                cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
-                cv2.putText(frame, name, (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+            if len(face_encodings) == 0:
+                return False
             
-            cv2.imshow('JARVIS Vision', frame)
+            self.known_faces[name] = face_encodings[0]
+            self.save_known_faces()
+            cv2.imwrite(f"face_{name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg", frame)
+            return True
+        except:
+            return False
+    
+    def who_am_i_seeing(self):
+        try:
+            frame = self.capture_frame()
+            if frame is None:
+                return "Camera not available"
             
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-        
-        cv2.destroyAllWindows()
-        return True
+            face_locations, face_encodings = self.detect_faces(frame)
+            
+            if len(face_encodings) == 0:
+                return "No faces detected"
+            
+            names = [self.recognize_face(enc) for enc in face_encodings]
+            
+            if len(names) == 1:
+                return f"I see {names[0]}"
+            else:
+                return f"I see {len(names)} people: {', '.join(names)}"
+        except:
+            return "Error accessing camera"
+    
+    def show_camera_feed(self, duration=5):
+        try:
+            if not self.start_camera():
+                return False
+            
+            start_time = datetime.now()
+            while (datetime.now() - start_time).seconds < duration:
+                frame = self.capture_frame()
+                if frame is None:
+                    break
+                
+                face_locations, face_encodings = self.detect_faces(frame)
+                
+                for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
+                    name = self.recognize_face(face_encoding)
+                    cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
+                    cv2.putText(frame, name, (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+                
+                cv2.imshow('JARVIS Vision', frame)
+                
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+            
+            cv2.destroyAllWindows()
+            return True
+        except:
+            return False
     
     def take_photo(self):
-        frame = self.capture_frame()
-        if frame is None:
+        try:
+            frame = self.capture_frame()
+            if frame is None:
+                return None
+            
+            filename = f"photo_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+            cv2.imwrite(filename, frame)
+            return filename
+        except:
             return None
-        
-        filename = f"photo_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
-        cv2.imwrite(filename, frame)
-        return filename
     
     def describe_scene(self):
-        frame = self.capture_frame()
-        if frame is None:
-            return "Camera not available"
-        
-        face_locations, _ = self.detect_faces(frame)
-        brightness = np.mean(frame)
-        
-        description = []
-        
-        if brightness < 50:
-            description.append("The scene is dark")
-        elif brightness > 200:
-            description.append("The scene is very bright")
-        else:
-            description.append("The scene has normal lighting")
-        
-        if len(face_locations) > 0:
-            description.append(f"I detect {len(face_locations)} face(s)")
-        else:
-            description.append("No faces detected")
-        
-        return ". ".join(description)
+        try:
+            frame = self.capture_frame()
+            if frame is None:
+                return "Camera not available"
+            
+            face_locations, _ = self.detect_faces(frame)
+            brightness = np.mean(frame)
+            
+            description = []
+            
+            if brightness < 50:
+                description.append("The scene is dark")
+            elif brightness > 200:
+                description.append("The scene is very bright")
+            else:
+                description.append("The scene has normal lighting")
+            
+            if len(face_locations) > 0:
+                description.append(f"I detect {len(face_locations)} face(s)")
+            else:
+                description.append("No faces detected")
+            
+            return ". ".join(description)
+        except:
+            return "Error analyzing scene"
 
 class Jarvis:
     def __init__(self):
-        self.engine = pyttsx3.init()
-        voices = self.engine.getProperty('voices')
-        self.engine.setProperty('voice', voices[0].id if voices else None)
-        self.engine.setProperty('rate', 190)
-        self.engine.setProperty('volume', 1.0)
+        try:
+            self.engine = pyttsx3.init()
+            voices = self.engine.getProperty('voices')
+            if voices:
+                self.engine.setProperty('voice', voices[0].id)
+            self.engine.setProperty('rate', 190)
+            self.engine.setProperty('volume', 1.0)
+        except:
+            self.engine = None
+            print("[Warning] Text-to-speech not available")
+        
         self.recognizer = sr.Recognizer()
         self.recognizer.energy_threshold = 4000
         self.recognizer.dynamic_energy_threshold = True
@@ -192,6 +246,17 @@ class Jarvis:
         self.reminders = []
         self.user_name = self.memory.get('user_name', 'Sir')
         self.vision = VisionModule() if VISION_AVAILABLE else None
+        
+        # Safe math operators
+        self.safe_operators = {
+            ast.Add: operator.add,
+            ast.Sub: operator.sub,
+            ast.Mult: operator.mul,
+            ast.Div: operator.truediv,
+            ast.Pow: operator.pow,
+            ast.Mod: operator.mod,
+            ast.USub: operator.neg
+        }
     
     def speak(self, text, lang=None):
         try:
@@ -202,14 +267,12 @@ class Jarvis:
                 try:
                     nepali_text = GoogleTranslator(source='en', target='ne').translate(text)
                     print(f"जार्विस: {nepali_text}")
-                    self.engine.say(text)
-                    self.engine.runAndWait()
                 except:
                     print(f"JARVIS: {text}")
-                    self.engine.say(text)
-                    self.engine.runAndWait()
             else:
                 print(f"JARVIS: {text}")
+            
+            if self.engine:
                 self.engine.say(text)
                 self.engine.runAndWait()
         except Exception as e:
@@ -241,17 +304,24 @@ class Jarvis:
                 except:
                     return ""
         except Exception as e:
+            print(f"[Error] Microphone: {e}")
             return ""
     
     def load_memory(self):
-        if os.path.exists(self.memory_file):
-            with open(self.memory_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
+        try:
+            if os.path.exists(self.memory_file):
+                with open(self.memory_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except:
+            pass
         return {}
     
     def save_memory(self):
-        with open(self.memory_file, 'w', encoding='utf-8') as f:
-            json.dump(self.memory, f, indent=2, ensure_ascii=False)
+        try:
+            with open(self.memory_file, 'w', encoding='utf-8') as f:
+                json.dump(self.memory, f, indent=2, ensure_ascii=False)
+        except:
+            pass
     
     def translate_to_english(self, text):
         if self.current_language == 'ne':
@@ -261,35 +331,44 @@ class Jarvis:
                 return text
         return text
     
+    def safe_eval_expr(self, node):
+        if isinstance(node, ast.Num):
+            return node.n
+        elif isinstance(node, ast.BinOp):
+            left = self.safe_eval_expr(node.left)
+            right = self.safe_eval_expr(node.right)
+            return self.safe_operators[type(node.op)](left, right)
+        elif isinstance(node, ast.UnaryOp):
+            operand = self.safe_eval_expr(node.operand)
+            return self.safe_operators[type(node.op)](operand)
+        else:
+            raise ValueError("Unsupported operation")
+    
     def safe_calculate(self, expr):
         try:
-            # Safe math evaluation without eval()
-            allowed_chars = set('0123456789+-*/()%. ')
-            if not all(c in allowed_chars for c in expr):
-                return None
-            
-            # Use ast.literal_eval for safe evaluation
+            expr = expr.replace('^', '**')
             node = ast.parse(expr, mode='eval')
-            return eval(compile(node, '<string>', 'eval'))
+            return self.safe_eval_expr(node.body)
         except:
             return None
     
     def search_web(self, query):
         try:
-            try:
-                result = wikipedia.summary(query, sentences=3, auto_suggest=True)
-                if result and len(result) > 20:
-                    self.learn(query, result)
-                    return result
-            except wikipedia.exceptions.DisambiguationError as e:
+            if wikipedia:
                 try:
-                    result = wikipedia.summary(e.options[0], sentences=2)
-                    self.learn(query, result)
-                    return result
+                    result = wikipedia.summary(query, sentences=3, auto_suggest=True)
+                    if result and len(result) > 20:
+                        self.learn(query, result)
+                        return result
+                except wikipedia.exceptions.DisambiguationError as e:
+                    try:
+                        result = wikipedia.summary(e.options[0], sentences=2)
+                        self.learn(query, result)
+                        return result
+                    except:
+                        pass
                 except:
                     pass
-            except:
-                pass
             
             url = f"https://api.duckduckgo.com/?q={query}&format=json"
             response = requests.get(url, timeout=5)
@@ -323,9 +402,9 @@ class Jarvis:
                     self.learn(query, answer)
                     return answer
             
-            return "I couldn't find reliable information. Opening browser for manual search."
+            return "I couldn't find reliable information. Opening browser."
         except Exception as e:
-            return "I'm having trouble accessing the web right now"
+            return "I'm having trouble accessing the web"
     
     def get_weather(self, city=""):
         try:
@@ -335,7 +414,7 @@ class Jarvis:
             response = requests.get(url, timeout=5)
             return f"Weather in {city}: {response.text}"
         except:
-            return "Couldn't fetch weather information"
+            return "Couldn't fetch weather"
     
     def get_news(self):
         try:
@@ -349,206 +428,214 @@ class Jarvis:
             return "Couldn't fetch news"
     
     def learn(self, key, value):
-        self.memory[key.lower()] = value
-        self.save_memory()
-        print(f"[LEARNED] {key[:50]}...")
+        try:
+            self.memory[key.lower()] = value
+            self.save_memory()
+            print(f"[LEARNED] {key[:50]}...")
+        except:
+            pass
     
     def recall(self, query):
-        query_lower = query.lower()
-        if query_lower in self.memory:
-            return self.memory[query_lower]
-        for key in self.memory:
-            if query_lower in key or key in query_lower:
-                return self.memory[key]
+        try:
+            query_lower = query.lower()
+            if query_lower in self.memory:
+                return self.memory[query_lower]
+            for key in self.memory:
+                if query_lower in key or key in query_lower:
+                    return self.memory[key]
+        except:
+            pass
         return None
     
     def execute_action(self, command):
         lower = command.lower()
         
-        # Vision commands
-        if self.vision:
-            if 'who am i seeing' in lower or 'who do you see' in lower:
-                return self.vision.who_am_i_seeing()
-            elif 'learn my face' in lower or 'remember my face' in lower:
-                self.speak("Please look at the camera")
-                if self.vision.learn_face(self.user_name):
-                    return f"I've learned your face, {self.user_name}"
-                return "Couldn't detect your face"
-            elif 'learn face' in lower:
-                self.speak("What is this person's name?")
-                name = self.listen()
-                if name:
-                    self.speak(f"Please {name}, look at the camera")
-                    if self.vision.learn_face(name):
-                        return f"I've learned {name}'s face"
-                return "Couldn't detect face"
-            elif 'take photo' in lower or 'take picture' in lower:
-                filename = self.vision.take_photo()
-                if filename:
-                    return f"Photo saved as {filename}"
-                return "Couldn't take photo"
-            elif 'show camera' in lower or 'open camera' in lower:
-                self.speak("Opening camera. Press Q to close")
-                self.vision.show_camera_feed(duration=30)
-                return "Camera closed"
-            elif 'describe scene' in lower or 'what do you see' in lower:
-                return self.vision.describe_scene()
-            elif 'stop camera' in lower:
-                self.vision.stop_camera()
-                return "Camera stopped"
-        
-        # System control
-        if 'volume up' in lower:
-            pyautogui.press('volumeup', presses=5)
-            return "Volume increased"
-        elif 'volume down' in lower:
-            pyautogui.press('volumedown', presses=5)
-            return "Volume decreased"
-        elif 'mute' in lower:
-            pyautogui.press('volumemute')
-            return "Volume toggled"
-        elif 'screenshot' in lower:
-            screenshot = pyautogui.screenshot()
-            filename = f'screenshot_{datetime.now().strftime("%Y%m%d_%H%M%S")}.png'
-            screenshot.save(filename)
-            return f"Screenshot saved as {filename}"
-        elif 'lock' in lower:
-            subprocess.run('rundll32.exe user32.dll,LockWorkStation', shell=True)
-            return "Locking computer"
-        elif 'shutdown' in lower:
-            subprocess.run('shutdown /s /t 5', shell=True)
-            return "Shutting down in 5 seconds"
-        elif 'restart' in lower:
-            subprocess.run('shutdown /r /t 5', shell=True)
-            return "Restarting in 5 seconds"
-        elif 'battery' in lower:
-            battery = psutil.sensors_battery()
-            if battery:
-                return f"Battery at {battery.percent}%, {'charging' if battery.power_plugged else 'not charging'}"
-            return "Battery info not available"
-        elif 'cpu' in lower:
-            cpu = psutil.cpu_percent(interval=1)
-            return f"CPU usage is {cpu}%"
-        elif 'memory' in lower or 'ram' in lower:
-            mem = psutil.virtual_memory()
-            return f"Memory usage is {mem.percent}%, {mem.available // (1024**3)} GB available"
-        
-        # App control
-        elif 'open' in lower:
-            app = lower.split('open')[-1].strip()
-            app_map = {
-                'chrome': 'chrome', 'browser': 'chrome', 'notepad': 'notepad',
-                'calculator': 'calc', 'paint': 'mspaint', 'explorer': 'explorer'
-            }
-            app_to_open = app_map.get(app, app)
-            try:
+        try:
+            # Vision commands
+            if self.vision and VISION_AVAILABLE:
+                if 'who am i seeing' in lower or 'who do you see' in lower:
+                    return self.vision.who_am_i_seeing()
+                elif 'learn my face' in lower or 'remember my face' in lower:
+                    self.speak("Please look at the camera")
+                    if self.vision.learn_face(self.user_name):
+                        return f"I've learned your face, {self.user_name}"
+                    return "Couldn't detect your face"
+                elif 'learn face' in lower:
+                    self.speak("What is this person's name?")
+                    name = self.listen()
+                    if name:
+                        self.speak(f"Please {name}, look at the camera")
+                        if self.vision.learn_face(name):
+                            return f"I've learned {name}'s face"
+                    return "Couldn't detect face"
+                elif 'take photo' in lower or 'take picture' in lower:
+                    filename = self.vision.take_photo()
+                    if filename:
+                        return f"Photo saved as {filename}"
+                    return "Couldn't take photo"
+                elif 'show camera' in lower or 'open camera' in lower:
+                    self.speak("Opening camera. Press Q to close")
+                    self.vision.show_camera_feed(duration=30)
+                    return "Camera closed"
+                elif 'describe scene' in lower or 'what do you see' in lower:
+                    return self.vision.describe_scene()
+                elif 'stop camera' in lower:
+                    self.vision.stop_camera()
+                    return "Camera stopped"
+            
+            # System control
+            if 'volume up' in lower:
+                pyautogui.press('volumeup', presses=5)
+                return "Volume increased"
+            elif 'volume down' in lower:
+                pyautogui.press('volumedown', presses=5)
+                return "Volume decreased"
+            elif 'mute' in lower:
+                pyautogui.press('volumemute')
+                return "Volume toggled"
+            elif 'screenshot' in lower:
+                screenshot = pyautogui.screenshot()
+                filename = f'screenshot_{datetime.now().strftime("%Y%m%d_%H%M%S")}.png'
+                screenshot.save(filename)
+                return f"Screenshot saved as {filename}"
+            elif 'lock' in lower and 'computer' in lower:
+                subprocess.run('rundll32.exe user32.dll,LockWorkStation', shell=True)
+                return "Locking computer"
+            elif 'shutdown' in lower:
+                subprocess.run('shutdown /s /t 5', shell=True)
+                return "Shutting down in 5 seconds"
+            elif 'restart' in lower:
+                subprocess.run('shutdown /r /t 5', shell=True)
+                return "Restarting in 5 seconds"
+            elif 'battery' in lower:
+                battery = psutil.sensors_battery()
+                if battery:
+                    return f"Battery at {battery.percent}%, {'charging' if battery.power_plugged else 'not charging'}"
+                return "Battery info not available"
+            elif 'cpu' in lower:
+                cpu = psutil.cpu_percent(interval=1)
+                return f"CPU usage is {cpu}%"
+            elif 'memory' in lower or 'ram' in lower:
+                mem = psutil.virtual_memory()
+                return f"Memory usage is {mem.percent}%, {mem.available // (1024**3)} GB available"
+            
+            # App control
+            elif 'open' in lower:
+                app = lower.split('open')[-1].strip()
+                app_map = {
+                    'chrome': 'chrome', 'browser': 'chrome', 'notepad': 'notepad',
+                    'calculator': 'calc', 'paint': 'mspaint', 'explorer': 'explorer',
+                    'cmd': 'cmd', 'terminal': 'cmd'
+                }
+                app_to_open = app_map.get(app, app)
                 subprocess.Popen(app_to_open, shell=True)
                 return f"Opening {app}"
-            except:
-                return f"Couldn't open {app}"
-        
-        # Web actions
-        elif 'search' in lower or 'google' in lower:
-            query = lower.replace('search', '').replace('google', '').strip()
-            if any(word in lower for word in ['what', 'who', 'where', 'when', 'how', 'why']):
-                remembered = self.recall(query)
+            
+            # Web actions
+            elif 'search' in lower or 'google' in lower:
+                query = lower.replace('search', '').replace('google', '').replace('for', '').strip()
+                if any(word in lower for word in ['what', 'who', 'where', 'when', 'how', 'why']):
+                    remembered = self.recall(query)
+                    if remembered:
+                        return f"I remember: {remembered}"
+                    self.speak("Searching the web")
+                    result = self.search_web(query)
+                    if "couldn't find" in result.lower() or "browser" in result.lower():
+                        webbrowser.open(f'https://www.google.com/search?q={query}')
+                        return f"Opened browser search for {query}"
+                    return result
+                else:
+                    webbrowser.open(f'https://www.google.com/search?q={query}')
+                    return f"Searching for {query}"
+            
+            elif 'play' in lower:
+                query = lower.split('play')[-1].strip()
+                webbrowser.open(f'https://www.youtube.com/results?search_query={query}')
+                return f"Playing {query}"
+            
+            elif any(word in lower for word in ['what is', 'who is', 'where is', 'how to', 'why', 'define']):
+                remembered = self.recall(command)
                 if remembered:
                     return f"I remember: {remembered}"
                 self.speak("Searching the web")
-                result = self.search_web(query)
-                if "couldn't find" in result.lower():
-                    webbrowser.open(f'https://www.google.com/search?q={query}')
-                    return f"Opened browser search for {query}"
+                result = self.search_web(command)
+                if "couldn't find" in result.lower() or "browser" in result.lower():
+                    webbrowser.open(f'https://www.google.com/search?q={command}')
+                    return "Opened browser search"
                 return result
-            else:
-                webbrowser.open(f'https://www.google.com/search?q={query}')
-                return f"Searching for {query}"
-        
-        elif 'play' in lower:
-            query = lower.split('play')[-1].strip()
-            webbrowser.open(f'https://www.youtube.com/results?search_query={query}')
-            return f"Playing {query}"
-        
-        elif any(word in lower for word in ['what is', 'who is', 'where is', 'how to', 'why', 'define']):
-            remembered = self.recall(command)
-            if remembered:
-                return f"I remember: {remembered}"
-            self.speak("Searching the web for you")
-            result = self.search_web(command)
-            if "couldn't find" in result.lower():
-                webbrowser.open(f'https://www.google.com/search?q={command}')
-                return "I opened a browser search"
-            return result
-        
-        # Utilities
-        elif 'time' in lower:
-            return datetime.now().strftime("It's %I:%M %p")
-        elif 'date' in lower:
-            return datetime.now().strftime("Today is %A, %B %d, %Y")
-        elif 'calculate' in lower or 'math' in lower:
-            expr = lower.replace('calculate', '').replace('math', '').replace('what is', '').strip()
-            expr = expr.replace('plus', '+').replace('minus', '-').replace('times', '*').replace('divided by', '/')
-            result = self.safe_calculate(expr)
-            if result is not None:
-                return f"The answer is {result}"
-            return "I couldn't calculate that"
-        elif 'joke' in lower:
-            try:
-                return pyjokes.get_joke()
-            except:
-                jokes = ["Why do programmers prefer dark mode? Because light attracts bugs!"]
+            
+            # Utilities
+            elif 'time' in lower:
+                return datetime.now().strftime("It's %I:%M %p")
+            elif 'date' in lower:
+                return datetime.now().strftime("Today is %A, %B %d, %Y")
+            elif 'calculate' in lower or 'math' in lower:
+                expr = lower.replace('calculate', '').replace('math', '').replace('what is', '').strip()
+                expr = expr.replace('plus', '+').replace('minus', '-').replace('times', '*').replace('divided by', '/')
+                expr = expr.replace('multiply', '*').replace('divide', '/')
+                result = self.safe_calculate(expr)
+                if result is not None:
+                    return f"The answer is {result}"
+                return "I couldn't calculate that"
+            elif 'joke' in lower:
+                if pyjokes:
+                    return pyjokes.get_joke()
+                jokes = ["Why do programmers prefer dark mode? Because light attracts bugs!",
+                        "Why did the AI go to school? To improve its learning rate!"]
                 return random.choice(jokes)
-        elif 'weather' in lower:
-            city = lower.split('in')[-1].strip() if 'in' in lower else ""
-            return self.get_weather(city)
-        elif 'news' in lower:
-            return self.get_news()
-        elif 'location' in lower or 'where am i' in lower:
-            try:
+            elif 'weather' in lower:
+                city = lower.split('in')[-1].strip() if 'in' in lower else ""
+                return self.get_weather(city)
+            elif 'news' in lower:
+                return self.get_news()
+            elif 'location' in lower or 'where am i' in lower:
                 response = requests.get('https://ipapi.co/json/', timeout=3)
                 data = response.json()
                 location = f"{data.get('city', 'Unknown')}, {data.get('country_name', 'Unknown')}"
                 self.memory['user_location'] = data.get('city', 'Unknown')
                 self.save_memory()
                 return f"You are in {location}"
-            except:
-                return "Couldn't determine location"
-        elif 'ip address' in lower:
-            try:
+            elif 'ip address' in lower:
                 response = requests.get('https://api.ipify.org', timeout=3)
                 return f"Your IP address is {response.text}"
-            except:
-                return "Couldn't get IP address"
+            
+            # Learning
+            elif 'my name is' in lower or "i'm" in lower or 'i am' in lower:
+                name = lower.split('is')[-1].strip() if 'is' in lower else lower.split("i'm")[-1].strip()
+                self.user_name = name
+                self.memory['user_name'] = name
+                self.save_memory()
+                return f"Nice to meet you, {name}"
+            
+            elif 'stop listening' in lower or 'sleep' in lower:
+                self.listening = False
+                return f"Going to sleep. Say 'hey Jarvis' to wake me"
+            elif 'stop' in lower or 'exit' in lower or 'quit' in lower:
+                return None
+            
+            return "I'm not sure how to help with that"
         
-        # Learning
-        elif 'my name is' in lower or "i'm" in lower or 'i am' in lower:
-            name = lower.split('is')[-1].strip() if 'is' in lower else lower.split("i'm")[-1].strip()
-            self.user_name = name
-            self.memory['user_name'] = name
-            self.save_memory()
-            return f"Nice to meet you, {name}"
-        
-        elif 'stop listening' in lower or 'sleep' in lower:
-            self.listening = False
-            return f"Going to sleep. Say 'hey Jarvis' to wake me, {self.user_name}"
-        elif 'stop' in lower or 'exit' in lower or 'quit' in lower:
-            return None
-        
-        return "I'm not sure how to help with that"
+        except Exception as e:
+            print(f"[Error] {e}")
+            return "I encountered an error processing that command"
     
     def process(self, text):
         if not text:
             return True
         
-        english_text = self.translate_to_english(text)
-        response = self.execute_action(english_text)
-        
-        if response is None:
-            self.speak("Shutting down", self.current_language)
-            return False
-        
-        self.speak(response, self.current_language)
-        return True
+        try:
+            english_text = self.translate_to_english(text)
+            response = self.execute_action(english_text)
+            
+            if response is None:
+                self.speak("Shutting down", self.current_language)
+                return False
+            
+            self.speak(response, self.current_language)
+            return True
+        except Exception as e:
+            print(f"[Error] Processing: {e}")
+            return True
     
     def continuous_listen(self):
         error_count = 0
@@ -560,7 +647,7 @@ class Jarvis:
                         lower = text.lower()
                         if 'hey jarvis' in lower or 'jarvis' in lower:
                             self.listening = True
-                            self.speak("Yes, I'm here", self.current_language)
+                            self.speak("Yes, I'm here")
                             error_count = 0
                     continue
                 
@@ -578,22 +665,21 @@ class Jarvis:
                 print(f"[Error] {e}")
                 error_count += 1
                 if error_count > 5:
-                    self.speak("I'm experiencing technical difficulties")
+                    print("[Critical] Too many errors")
                     break
     
     def run(self):
         try:
-            greeting = f"JARVIS fully operational. All systems online. Ready to assist, {self.user_name}"
+            greeting = f"JARVIS fully operational. Ready to assist, {self.user_name}"
             self.speak(greeting)
             print("\n" + "="*70)
-            print("जार्विस पूर्ण रूपमा सञ्चालनमा। सबै प्रणाली अनलाइन।")
-            print("JARVIS - Complete AI Assistant with Vision")
+            print("JARVIS - Complete AI Assistant")
             print("Bilingual: English | Nepali (नेपाली)")
-            print("Features: Vision | System Control | Web Search | Learning")
+            print("Features: Voice | Vision | System Control | Web Search | Learning")
             if VISION_AVAILABLE:
                 print("Vision: ✓ Enabled")
             else:
-                print("Vision: ✗ Disabled")
+                print("Vision: ✗ Disabled (install opencv-python face-recognition)")
             print("="*70 + "\n")
             self.continuous_listen()
         except KeyboardInterrupt:
@@ -601,7 +687,12 @@ class Jarvis:
             print("\n[✓] JARVIS stopped")
         except Exception as e:
             print(f"\n[✗] Fatal error: {e}")
+            self.speak("Critical error. Shutting down")
 
 if __name__ == "__main__":
-    jarvis = Jarvis()
-    jarvis.run()
+    try:
+        jarvis = Jarvis()
+        jarvis.run()
+    except Exception as e:
+        print(f"Failed to start JARVIS: {e}")
+        input("Press Enter to exit...")
