@@ -11,7 +11,7 @@
  - ✓ Syst em automation & control
 - ✓ Web scraping & knowledge extraction
 - ✓ Background service with hotkeys 
-jklkjjuuu
+jklkjjuu
 **2. Unique Selling Points (USPs)**
 - ✓ Bilingual support (rare in voice assistants)
 - ✓ Self-learning from web searches
