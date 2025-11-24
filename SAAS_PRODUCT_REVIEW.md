@@ -8,7 +8,7 @@
 - ✓ Voice recognition (English + Nepali bilingual- ✓ Text-to-speech engine
 - ✓ Self-learning AI with persistent memory
 - ✓ Computervision & face recognition
-- ✓ System automation & control
+ - ✓ System automation & control
 - ✓ Web scraping & knowledge extraction
 - ✓ Background service with hotkeys
 
