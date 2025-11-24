@@ -10,7 +10,7 @@
 - ✓ Computervision & face recognition
  - ✓ Syst em automation & control
 - ✓ Web scraping & knowledge extraction
-- ✓ Background service with hotkeys
+- ✓ Background service with hotkeys 
 
 **2. Unique Selling Points (USPs)**
 - ✓ Bilingual support (rare in voice assistants)
