@@ -5,8 +5,7 @@
 ### ✅ Strengths (What's Working)
 
 **1. Core Technology Stack**
-- ✓ Voice recognition (English + Nepali bilingual)
-- ✓ Text-to-speech engine
+- ✓ Voice recognition (English + Nepali bilingual- ✓ Text-to-speech engine
 - ✓ Self-learning AI with persistent memory
 - ✓ Computer vision & face recognition
 - ✓ System automation & control
