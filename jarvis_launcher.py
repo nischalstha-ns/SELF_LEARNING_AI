@@ -19,9 +19,10 @@ def show_menu():
     print("9. INSTANT Mode      - Zero-delay")
     print("A. Ultra Fast Mode   - Original optimized")
     print("B. Fast Mode         - Balanced")
-    print("C. Full Mode         - Complete features")
-    print("D. Background Mode   - Service with hotkeys")
-    print("E. Performance Test  - Compare all modes")
+    print("C. Advanced Mode     - Full features + optimized + secure")
+    print("D. Full Mode         - Complete features")
+    print("E. Background Mode   - Service with hotkeys")
+    print("F. Performance Test  - Compare all modes")
     print("0. Exit")
     print("="*60)
 
@@ -38,9 +39,10 @@ def launch_mode(choice):
         '9': 'jarvis_instant.py',
         'a': 'jarvis_ultra_fast.py',
         'b': 'jarvis_fast.py',
-        'c': 'jarvis.py',
-        'd': 'jarvis_background.py',
-        'e': 'performance_test.py'
+        'c': 'jarvis_advanced.py',
+        'd': 'jarvis.py',
+        'e': 'jarvis_background.py',
+        'f': 'performance_test.py'
     }
     
     if choice in scripts:
@@ -61,7 +63,7 @@ def launch_mode(choice):
 def main():
     while True:
         show_menu()
-        choice = input("\nEnter your choice (0-9, A-E): ").strip().lower()
+        choice = input("\nEnter your choice (0-9, A-F): ").strip().lower()
         
         if not launch_mode(choice):
             break

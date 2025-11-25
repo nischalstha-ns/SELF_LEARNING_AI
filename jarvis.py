@@ -11,6 +11,7 @@ import threading
 import random
 import re
 import shutil
+import ast
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 from deep_translator import GoogleTranslator
@@ -18,8 +19,10 @@ try:
     import wikipedia
     import pyjokes
     import pyperclip
+    from vision_module import VisionModule
+    VISION_AVAILABLE = True
 except:
-    pass
+    VISION_AVAILABLE = False
 
 class Jarvis:
     def __init__(self):
@@ -41,6 +44,11 @@ class Jarvis:
         self.context = []
         self.reminders = []
         self.user_name = self.memory.get('user_name', 'Sir')
+        
+        if VISION_AVAILABLE:
+            self.vision = VisionModule()
+        else:
+            self.vision = None
     
     def speak(self, text, lang=None):
         try:
@@ -355,10 +363,47 @@ class Jarvis:
         
         return None
     
+    def vision_command(self, command):
+        if not self.vision:
+            return "Vision features not available. Install: pip install opencv-python face-recognition"
+        
+        lower = command.lower()
+        
+        if 'who am i seeing' in lower or 'who do you see' in lower:
+            return self.vision.who_am_i_seeing()
+        elif 'learn my face' in lower or 'remember my face' in lower:
+            if self.vision.learn_face(self.user_name):
+                return f"I've learned your face, {self.user_name}"
+            return "Couldn't detect a face. Please look at the camera"
+        elif 'learn face' in lower:
+            name = lower.split('face')[-1].strip()
+            if self.vision.learn_face(name):
+                return f"I've learned {name}'s face"
+            return "Couldn't detect a face"
+        elif 'take photo' in lower or 'take picture' in lower:
+            filename = self.vision.take_photo()
+            if filename:
+                return f"Photo saved as {filename}"
+            return "Camera not available"
+        elif 'show camera' in lower or 'open camera' in lower:
+            self.vision.show_camera_feed(duration=10)
+            return "Camera feed closed"
+        elif 'describe scene' in lower or 'what do you see' in lower:
+            return self.vision.describe_scene()
+        elif 'stop camera' in lower:
+            self.vision.stop_camera()
+            return "Camera stopped"
+        
+        return None
+    
     def execute_action(self, command):
         lower = command.lower()
         
         self.check_reminders()
+        
+        vision_response = self.vision_command(command)
+        if vision_response:
+            return vision_response
         
         file_response = self.file_operations(command)
         if file_response:
@@ -469,7 +514,11 @@ class Jarvis:
                 expr = expr.replace('plus', '+').replace('minus', '-').replace('times', '*').replace('multiply', '*')
                 expr = expr.replace('divided by', '/').replace('divide', '/').replace('power', '**').replace('squared', '**2')
                 expr = expr.replace('x', '*').replace('÷', '/')
-                result = eval(expr, {"__builtins__": {}}, {})
+                node = ast.parse(expr, mode='eval')
+                for n in ast.walk(node):
+                    if isinstance(n, (ast.Call, ast.Import, ast.ImportFrom)):
+                        raise ValueError("Invalid expression")
+                result = eval(compile(node, '<string>', 'eval'), {"__builtins__": {}}, {})
                 return f"The answer is {result}"
             except:
                 return "I couldn't calculate that. Try using numbers and operators like plus, minus, times, divided by."
