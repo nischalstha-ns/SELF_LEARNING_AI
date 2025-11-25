@@ -127,6 +127,7 @@ python install_startup.py
 - **INSTANT Mode** - Zero-delay responses, compressed syntax
 - **Ultra Fast Mode** - Original optimized version
 - **Fast Mode** - Balanced performance with essential features
+- **Advanced Mode** - Full features + optimized performance + secure
 - **Full Mode** - Complete feature set with vision and learning
 
 ## Features
