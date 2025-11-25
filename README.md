@@ -85,18 +85,24 @@ python jarvis_fast.py
 ```
 Or double-click `start_fast.bat`
 
-**Option 12: Full Mode (All Features)**
+**Option 12: Advanced Mode (Full Features + Optimized)**
+```bash
+python jarvis_advanced.py
+```
+Or double-click `start_advanced.bat`
+
+**Option 13: Full Mode (All Features)**
 ```bash
 python jarvis.py
 ```
 
-**Option 13: Background Mode**
+**Option 14: Background Mode**
 ```bash
 python jarvis_background.py
 ```
 Or double-click `start_jarvis_visible.bat`
 
-**Option 14: Silent Background**
+**Option 15: Silent Background**
 Double-click `start_jarvis.bat`
 
 ## Auto-Startup
