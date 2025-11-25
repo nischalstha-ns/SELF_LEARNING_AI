@@ -9,7 +9,7 @@
 - ✓ Self-learning AI with persistent memory
 - ✓ Computervision & face recognition
  - ✓ System automation & control
-- ✓ Web scraping & knowledge extraction
+- ✓ Web scraping & know ledge extraction
 - ✓ Background service with hotkeys 
 **2. Unique Selling Points (USPs)**
 - ✓ Bilingual support (rare in voice assistants)
