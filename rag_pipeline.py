@@ -3,6 +3,8 @@ import os
 from datetime import datetime
 import cv2
 import numpy as np
+import pyttsx3
+import threading
 
 class RAGPipeline:
     def __init__(self):
@@ -12,6 +14,9 @@ class RAGPipeline:
         os.makedirs(self.folder, exist_ok=True)
         os.makedirs(self.faces_folder, exist_ok=True)
         self.data = self.load_data()
+        self.engine = pyttsx3.init()
+        self.engine.setProperty('rate', 150)
+        self.engine.setProperty('volume', 1.0)
     
     def load_data(self):
         if os.path.exists(self.learned_file):
@@ -113,3 +118,10 @@ class RAGPipeline:
         
         self.learn_conversation(question, response)
         return response
+    
+    def speak(self, text):
+        def _speak():
+            self.engine.say(text)
+            self.engine.runAndWait()
+        thread = threading.Thread(target=_speak)
+        thread.start()
