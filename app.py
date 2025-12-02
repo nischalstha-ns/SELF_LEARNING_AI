@@ -103,34 +103,51 @@ with col2:
 
 with col3:
     if st.button("🔄 Reset", use_container_width=True):
-        if os.path.exists("baby_ai_knowledge/learned_data.json"):
-            os.remove("baby_ai_knowledge/learned_data.json")
+        if os.path.exists("baby_ai_knowledge/learned.json"):
+            os.remove("baby_ai_knowledge/learned.json")
         st.session_state.rag = RAGPipeline()
         st.rerun()
 
 with col4:
     if st.button("📊 Stats", use_container_width=True):
-        st.info(f"Documents: {len(st.session_state.rag.documents)}")
+        data = st.session_state.rag.data
+        st.info(f"Conversations: {len(data['conversations'])} | Faces: {len(data['faces'])}")
 
 st.markdown(f"<p class='status-text' style='text-align: center;'><b>Status:</b> Mic {'🟢' if st.session_state.mic_on else '🔴'} | AI {'🟢' if st.session_state.ai_on else '🔴'}</p>", unsafe_allow_html=True)
 
-uploaded_files = st.file_uploader("📁 Upload documents to train", accept_multiple_files=True, type=['txt'])
-if uploaded_files:
-    docs = [str(file.read(), encoding="utf-8", errors="ignore") for file in uploaded_files]
-    st.session_state.rag.add_documents(docs)
-    st.success(f"✅ Learned from {len(docs)} documents!")
+col_a, col_b = st.columns(2)
+
+with col_a:
+    uploaded_files = st.file_uploader("📁 Upload documents", accept_multiple_files=True, type=['txt'])
+    if uploaded_files:
+        for file in uploaded_files:
+            content = str(file.read(), encoding="utf-8", errors="ignore")
+            st.session_state.rag.learn_conversation(f"Document: {file.name}", content)
+        st.success(f"✅ Learned {len(uploaded_files)} documents!")
+
+with col_b:
+    face_image = st.file_uploader("👤 Upload face image", type=['jpg', 'jpeg', 'png'])
+    if face_image:
+        face_name = st.text_input("Person's name:", key="face_name")
+        if st.button("Save Face") and face_name:
+            face_id = st.session_state.rag.save_face(face_image.read(), face_name)
+            st.success(f"✅ Saved face: {face_name}")
 
 query = st.text_input("💬 Ask me anything:", key="query_input")
 
 if st.button("🔍 Ask Baby AI", use_container_width=True) and query:
     if st.session_state.ai_on:
-        st.session_state.talking = True
-        st.rerun()
-        with st.spinner("🤔 Thinking..."):
+        with st.spinner("🤔 Learning and thinking..."):
             result = st.session_state.rag.query(query)
             st.markdown(f"<div style='background-color: rgba(255,255,255,0.9); padding: 20px; border-radius: 15px; margin: 20px 0; box-shadow: 0 10px 30px rgba(0,0,0,0.2);'><b style='font-size: 1.3em;'>🤖 Baby AI says:</b><br><p style='font-size: 1.1em; margin-top: 10px;'>{result}</p></div>", unsafe_allow_html=True)
-        st.session_state.talking = False
     else:
         st.warning("⚠️ Turn ON the AI first!")
+
+if len(st.session_state.rag.data["conversations"]) > 0:
+    with st.expander("📜 Conversation History"):
+        for conv in st.session_state.rag.data["conversations"][-5:]:
+            st.markdown(f"**You:** {conv['user']}")
+            st.markdown(f"**AI:** {conv['ai']}")
+            st.markdown("---")
 
 st.markdown('</div>', unsafe_allow_html=True)
