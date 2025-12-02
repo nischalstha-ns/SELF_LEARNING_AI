@@ -1,1 +1,7 @@
 streamlit
+langchain
+langchain-community
+transformers
+torch
+faiss-cpu
+sentence-transformers
