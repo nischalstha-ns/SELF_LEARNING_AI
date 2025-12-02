@@ -140,7 +140,10 @@ with col_b:
             if st.button("Save from Camera") and face_name:
                 face_id, msg = st.session_state.rag.detect_and_save_face(camera_image.read(), face_name)
                 if face_id:
+                    response = f"Nice to meet you {face_name}! I will remember your face."
                     st.success(f"✅ {msg} - Saved: {face_name}")
+                    if st.session_state.mic_on:
+                        st.session_state.rag.speak(response)
                 else:
                     st.error(f"❌ {msg}")
     
@@ -160,6 +163,8 @@ with col_b:
         if recognize_image:
             if st.button("Recognize"):
                 result = st.session_state.rag.recognize_face(recognize_image.read())
+                if st.session_state.mic_on:
+                    st.session_state.rag.speak(result)
                 st.info(f"🤖 {result}")
 
 query = st.text_input("💬 Ask me anything:", key="query_input")
@@ -168,6 +173,8 @@ if st.button("🔍 Ask Baby AI", use_container_width=True) and query:
     if st.session_state.ai_on:
         with st.spinner("🤔 Learning and thinking..."):
             result = st.session_state.rag.query(query)
+            if st.session_state.mic_on:
+                st.session_state.rag.speak(result)
             st.markdown(f"<div style='background-color: rgba(255,255,255,0.9); padding: 20px; border-radius: 15px; margin: 20px 0; box-shadow: 0 10px 30px rgba(0,0,0,0.2);'><b style='font-size: 1.3em;'>🤖 Baby AI says:</b><br><p style='font-size: 1.1em; margin-top: 10px;'>{result}</p></div>", unsafe_allow_html=True)
     else:
         st.warning("⚠️ Turn ON the AI first!")
