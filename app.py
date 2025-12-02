@@ -1,6 +1,7 @@
 import streamlit as st
 from rag_pipeline import RAGPipeline
 import os
+import cv2
 
 st.set_page_config(page_title="Baby AI", page_icon="👶", layout="wide", initial_sidebar_state="collapsed")
 
@@ -112,6 +113,10 @@ with col4:
     if st.button("📊 Stats", use_container_width=True):
         data = st.session_state.rag.data
         st.info(f"Conversations: {len(data['conversations'])} | Faces: {len(data['faces'])}")
+        if len(data['faces']) > 0:
+            st.write("**Known Faces:**")
+            for face in data['faces'][-5:]:
+                st.write(f"- {face['name']} ({face['timestamp'][:10]})")
 
 st.markdown(f"<p class='status-text' style='text-align: center;'><b>Status:</b> Mic {'🟢' if st.session_state.mic_on else '🔴'} | AI {'🟢' if st.session_state.ai_on else '🔴'}</p>", unsafe_allow_html=True)
 
@@ -126,12 +131,36 @@ with col_a:
         st.success(f"✅ Learned {len(uploaded_files)} documents!")
 
 with col_b:
-    face_image = st.file_uploader("👤 Upload face image", type=['jpg', 'jpeg', 'png'])
-    if face_image:
-        face_name = st.text_input("Person's name:", key="face_name")
-        if st.button("Save Face") and face_name:
-            face_id = st.session_state.rag.save_face(face_image.read(), face_name)
-            st.success(f"✅ Saved face: {face_name}")
+    face_tab1, face_tab2, face_tab3 = st.tabs(["📷 Camera", "🖼️ Upload", "🔍 Recognize"])
+    
+    with face_tab1:
+        camera_image = st.camera_input("📸 Take a photo")
+        if camera_image:
+            face_name = st.text_input("Person's name:", key="camera_name")
+            if st.button("Save from Camera") and face_name:
+                face_id, msg = st.session_state.rag.detect_and_save_face(camera_image.read(), face_name)
+                if face_id:
+                    st.success(f"✅ {msg} - Saved: {face_name}")
+                else:
+                    st.error(f"❌ {msg}")
+    
+    with face_tab2:
+        face_image = st.file_uploader("👤 Upload face", type=['jpg', 'jpeg', 'png'])
+        if face_image:
+            face_name = st.text_input("Person's name:", key="upload_name")
+            if st.button("Save from Upload") and face_name:
+                face_id, msg = st.session_state.rag.detect_and_save_face(face_image.read(), face_name)
+                if face_id:
+                    st.success(f"✅ {msg} - Saved: {face_name}")
+                else:
+                    st.error(f"❌ {msg}")
+    
+    with face_tab3:
+        recognize_image = st.camera_input("🔍 Recognize face")
+        if recognize_image:
+            if st.button("Recognize"):
+                result = st.session_state.rag.recognize_face(recognize_image.read())
+                st.info(f"🤖 {result}")
 
 query = st.text_input("💬 Ask me anything:", key="query_input")
 
@@ -143,11 +172,22 @@ if st.button("🔍 Ask Baby AI", use_container_width=True) and query:
     else:
         st.warning("⚠️ Turn ON the AI first!")
 
-if len(st.session_state.rag.data["conversations"]) > 0:
-    with st.expander("📜 Conversation History"):
-        for conv in st.session_state.rag.data["conversations"][-5:]:
-            st.markdown(f"**You:** {conv['user']}")
-            st.markdown(f"**AI:** {conv['ai']}")
-            st.markdown("---")
+col_hist1, col_hist2 = st.columns(2)
+
+with col_hist1:
+    if len(st.session_state.rag.data["conversations"]) > 0:
+        with st.expander("📜 Conversation History"):
+            for conv in st.session_state.rag.data["conversations"][-5:]:
+                st.markdown(f"**You:** {conv['user']}")
+                st.markdown(f"**AI:** {conv['ai']}")
+                st.markdown("---")
+
+with col_hist2:
+    if len(st.session_state.rag.data["faces"]) > 0:
+        with st.expander("👥 Saved Faces"):
+            for face in st.session_state.rag.data["faces"][-5:]:
+                st.markdown(f"**{face['name']}** - {face['timestamp'][:19]}")
+                if os.path.exists(face['path']):
+                    st.image(face['path'], width=100)
 
 st.markdown('</div>', unsafe_allow_html=True)
