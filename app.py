@@ -1,5 +1,6 @@
 import streamlit as st
 from rag_pipeline import RAGPipeline
+import os
 
 st.set_page_config(page_title="Baby AI", page_icon="👶", layout="wide", initial_sidebar_state="collapsed")
 
@@ -102,6 +103,8 @@ with col2:
 
 with col3:
     if st.button("🔄 Reset", use_container_width=True):
+        if os.path.exists("baby_ai_knowledge/learned_data.json"):
+            os.remove("baby_ai_knowledge/learned_data.json")
         st.session_state.rag = RAGPipeline()
         st.rerun()
 
@@ -113,7 +116,7 @@ st.markdown(f"<p class='status-text' style='text-align: center;'><b>Status:</b> 
 
 uploaded_files = st.file_uploader("📁 Upload documents to train", accept_multiple_files=True, type=['txt'])
 if uploaded_files:
-    docs = [file.read().decode("utf-8") for file in uploaded_files]
+    docs = [str(file.read(), encoding="utf-8", errors="ignore") for file in uploaded_files]
     st.session_state.rag.add_documents(docs)
     st.success(f"✅ Learned from {len(docs)} documents!")
 

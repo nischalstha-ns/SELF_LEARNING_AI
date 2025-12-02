@@ -1,9 +1,26 @@
+import json
+import os
+
 class RAGPipeline:
     def __init__(self):
-        self.documents = []
+        self.knowledge_folder = "baby_ai_knowledge"
+        self.knowledge_file = os.path.join(self.knowledge_folder, "learned_data.json")
+        os.makedirs(self.knowledge_folder, exist_ok=True)
+        self.documents = self.load_documents()
+    
+    def load_documents(self):
+        if os.path.exists(self.knowledge_file):
+            with open(self.knowledge_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        return []
+    
+    def save_documents(self):
+        with open(self.knowledge_file, "w", encoding="utf-8") as f:
+            json.dump(self.documents, f, ensure_ascii=False, indent=2)
     
     def add_documents(self, docs):
         self.documents.extend(docs)
+        self.save_documents()
     
     def query(self, question):
         if not self.documents:
@@ -25,9 +42,3 @@ class RAGPipeline:
             return f"Based on what I learned: {context[:200]}..."
         
         return f"I don't have specific information about '{question}' in my knowledge base. Try asking something else! 🤔"
-
-def create_vector_store(docs):
-    return docs
-
-def create_rag_chain(vector_store):
-    return RAGPipeline()
