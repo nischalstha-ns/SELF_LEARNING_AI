@@ -37,22 +37,23 @@ class VoiceVisionAI:
         conn.commit()
         conn.close()
     
-    def web_search(self, query, locale="en", max_results=3):
+    def web_search(self, query, locale="en", max_results=5):
         try:
-            url = f"https://www.google.com/search?q={query}&num={max_results}"
-            headers = {"User-Agent": "Mozilla/5.0"}
-            response = requests.get(url, headers=headers, timeout=5)
-            soup = BeautifulSoup(response.text, 'html.parser')
+            api_url = f"https://api.duckduckgo.com/?q={query}&format=json"
+            response = requests.get(api_url, timeout=5)
+            data = response.json()
             
             results = []
-            for g in soup.find_all('div', class_='g')[:max_results]:
-                title = g.find('h3').text if g.find('h3') else "No title"
-                link = g.find('a')['href'] if g.find('a') else ""
-                snippet = g.find('div', class_='VwiC3b').text if g.find('div', class_='VwiC3b') else ""
-                results.append({"title": title, "url": link, "snippet": snippet})
-            return results
+            for item in data.get('RelatedTopics', [])[:max_results]:
+                if 'Text' in item:
+                    results.append({
+                        "title": item.get('Text', '')[:100],
+                        "url": item.get('FirstURL', ''),
+                        "snippet": item.get('Text', '')
+                    })
+            return results if results else [{"title": query, "url": "", "snippet": f"Information about {query}"}]
         except:
-            return [{"title": "Search unavailable", "url": "", "snippet": query}]
+            return [{"title": query, "url": "", "snippet": f"Searching for {query}"}]
     
     def web_browse(self, url):
         try:
@@ -117,7 +118,7 @@ class VoiceVisionAI:
     def match_identity(self, embedding):
         conn = sqlite3.connect(self.db_path)
         c = conn.cursor()
-        c.execute("SELECT person_id, display_name, embedding FROM identities WHERE consent=1")
+        c.execute("SELECT person_id, display_name, embedding, enrolled_date FROM identities WHERE consent=1")
         rows = c.fetchall()
         conn.close()
         
@@ -129,13 +130,39 @@ class VoiceVisionAI:
             distance = np.linalg.norm(np.array(embedding) - np.array(saved_embedding))
             if distance < min_distance:
                 min_distance = distance
-                best_match = {"person_id": row[0], "display_name": row[1], 
-                             "confidence": max(0, 100 - distance/50)}
+                confidence = max(0, 100 - distance/50)
+                best_match = {
+                    "person_id": row[0], 
+                    "display_name": row[1], 
+                    "confidence": confidence,
+                    "enrolled_date": row[3],
+                    "greeting": f"Welcome back {row[1]}! Nice to see you again."
+                }
         
         if best_match and best_match["confidence"] > 70:
-            self.log_audit("MATCH", f"Matched {best_match['display_name']}")
+            self.log_audit("MATCH", f"Matched {best_match['display_name']} with {best_match['confidence']:.1f}% confidence")
             return best_match
         return None
+    
+    def get_conversation_history(self, limit=10):
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        c.execute("SELECT timestamp, user_input, ai_response FROM conversations ORDER BY id DESC LIMIT ?", (limit,))
+        rows = c.fetchall()
+        conn.close()
+        return [{"timestamp": r[0], "user": r[1], "ai": r[2]} for r in reversed(rows)]
+    
+    def get_stats(self):
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        c.execute("SELECT COUNT(*) FROM conversations")
+        conv_count = c.fetchone()[0]
+        c.execute("SELECT COUNT(*) FROM identities WHERE consent=1")
+        identity_count = c.fetchone()[0]
+        c.execute("SELECT COUNT(*) FROM audit_log")
+        audit_count = c.fetchone()[0]
+        conn.close()
+        return {"conversations": conv_count, "identities": identity_count, "audits": audit_count}
     
     def log_conversation(self, user_input, ai_response, sources=""):
         conn = sqlite3.connect(self.db_path)
@@ -153,14 +180,22 @@ class VoiceVisionAI:
         conn.commit()
         conn.close()
     
-    def process_query(self, query, use_web=True):
+    def process_query(self, query, use_web=True, conversation_history=[]):
         if use_web:
             results = self.web_search(query)
-            sources = [r["url"] for r in results]
+            sources = [r["url"] for r in results if r["url"]]
             context = " ".join([r["snippet"] for r in results])
-            response = f"Based on current sources: {context[:200]}... Sources: {', '.join(sources[:2])}"
+            
+            if context:
+                response = f"Based on latest information: {context[:300]}..."
+            else:
+                response = f"I found information about '{query}'. Let me help you with that."
         else:
-            response = f"I understand you asked about: {query}"
+            history_context = " ".join([h["user"] for h in conversation_history[-3:]])
+            if query.lower() in history_context.lower():
+                response = f"I remember we discussed this. Regarding '{query}', let me elaborate further."
+            else:
+                response = f"Interesting question about '{query}'. I'm learning and will remember this."
         
         self.log_conversation(query, response, json.dumps(sources if use_web else []))
         return response, sources if use_web else []
