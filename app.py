@@ -36,6 +36,7 @@ st.markdown("""
     box-shadow: 0 20px 60px rgba(0,0,0,0.3);
     transition: all 0.3s;
     animation: float 3s ease-in-out infinite;
+    filter: brightness(1.1);
 }
 @keyframes float {
     0%, 100% { transform: translateY(0px); }
@@ -91,7 +92,9 @@ img_class = "talking" if st.session_state.talking else ""
 st.markdown(f'<div style="text-align: center;"><img src="https://img.freepik.com/premium-photo/baby-ai-bot-with-ai-label-technology-house-ai-technology-modernism_1053378-11285.jpg?w=2000" class="baby-image {img_class}" width="400"></div>', unsafe_allow_html=True)
 
 expression = "😊 Ready to help!" if st.session_state.ai_on else "😴 Sleeping..."
+stats = st.session_state.assistant.get_stats()
 st.markdown(f"<h2 class='status-text' style='text-align: center;'>{expression}</h2>", unsafe_allow_html=True)
+st.markdown(f"<p style='text-align: center; color: white;'>🧠 {stats['conversations']} conversations | 👥 {stats['identities']} known faces</p>", unsafe_allow_html=True)
 
 col1, col2, col3, col4 = st.columns([1,1,1,1])
 
@@ -114,12 +117,8 @@ with col3:
 
 with col4:
     if st.button("📊 Stats", use_container_width=True):
-        data = st.session_state.rag.data
-        st.info(f"Conversations: {len(data['conversations'])} | Faces: {len(data['faces'])}")
-        if len(data['faces']) > 0:
-            st.write("**Known Faces:**")
-            for face in data['faces'][-5:]:
-                st.write(f"- {face['name']} ({face['timestamp'][:10]})")
+        stats = st.session_state.assistant.get_stats()
+        st.info(f"💬 {stats['conversations']} | 👥 {stats['identities']} | 📋 {stats['audits']}")
 
 st.markdown(f"<p class='status-text' style='text-align: center;'><b>Status:</b> Mic {'🟢' if st.session_state.mic_on else '🔴'} | AI {'🟢' if st.session_state.ai_on else '🔴'}</p>", unsafe_allow_html=True)
 
@@ -170,15 +169,18 @@ with col_b:
                 if faces:
                     match = st.session_state.assistant.match_identity(faces[0]["embedding"])
                     if match:
-                        result = f"Hello {match['display_name']}! Confidence: {match['confidence']:.1f}%"
+                        result = match['greeting']
+                        st.success(f"✅ {match['display_name']} | Confidence: {match['confidence']:.1f}%")
+                        st.caption(f"Enrolled: {match['enrolled_date'][:10]}")
                     else:
                         result = "Unknown person - not enrolled"
+                        st.warning("⚠️ " + result)
                 else:
                     result = "No face detected"
+                    st.error("❌ " + result)
                 
                 if st.session_state.mic_on:
                     st.session_state.assistant.tts_speak(result)
-                st.info(f"🤖 {result}")
 
 col_q1, col_q2 = st.columns([3, 1])
 
@@ -200,41 +202,50 @@ if "voice_query" in st.session_state:
 
 if st.button("🔍 Ask Baby AI", use_container_width=True) and query:
     if st.session_state.ai_on:
-        with st.spinner("🤔 Searching and thinking..."):
+        with st.spinner("🤔 Processing..."):
+            history = st.session_state.assistant.get_conversation_history(5)
+            
             if use_web:
-                result, sources = st.session_state.assistant.process_query(query, use_web=True)
+                result, sources = st.session_state.assistant.process_query(query, use_web=True, conversation_history=history)
             else:
-                result = st.session_state.rag.query(query)
-                sources = []
+                result, sources = st.session_state.assistant.process_query(query, use_web=False, conversation_history=history)
             
             if st.session_state.mic_on:
                 st.session_state.assistant.tts_speak(result)
             
-            st.markdown(f"<div style='background-color: rgba(255,255,255,0.9); padding: 20px; border-radius: 15px; margin: 20px 0; box-shadow: 0 10px 30px rgba(0,0,0,0.2);'><b style='font-size: 1.3em;'>🤖 Baby AI says:</b><br><p style='font-size: 1.1em; margin-top: 10px;'>{result}</p></div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 15px; margin: 20px 0; box-shadow: 0 10px 30px rgba(0,0,0,0.3);'><b style='font-size: 1.3em;'>🤖 Baby AI</b><br><p style='font-size: 1.1em; margin-top: 10px;'>{result}</p></div>", unsafe_allow_html=True)
             
             if sources:
-                st.markdown("**Sources:**")
-                for src in sources[:3]:
-                    st.markdown(f"- {src}")
+                with st.expander("🔗 View Sources"):
+                    for i, src in enumerate(sources[:5], 1):
+                        st.markdown(f"{i}. {src}")
     else:
         st.warning("⚠️ Turn ON the AI first!")
 
 col_hist1, col_hist2 = st.columns(2)
 
 with col_hist1:
-    if len(st.session_state.rag.data["conversations"]) > 0:
-        with st.expander("📜 Conversation History"):
-            for conv in st.session_state.rag.data["conversations"][-5:]:
-                st.markdown(f"**You:** {conv['user']}")
-                st.markdown(f"**AI:** {conv['ai']}")
+    history = st.session_state.assistant.get_conversation_history(5)
+    if history:
+        with st.expander("📜 Recent Conversations"):
+            for conv in history:
+                st.markdown(f"**👤 You:** {conv['user']}")
+                st.markdown(f"**🤖 AI:** {conv['ai']}")
+                st.caption(conv['timestamp'][:19])
                 st.markdown("---")
 
 with col_hist2:
-    if len(st.session_state.rag.data["faces"]) > 0:
-        with st.expander("👥 Saved Faces"):
-            for face in st.session_state.rag.data["faces"][-5:]:
-                st.markdown(f"**{face['name']}** - {face['timestamp'][:19]}")
-                if os.path.exists(face['path']):
-                    st.image(face['path'], width=100)
+    stats = st.session_state.assistant.get_stats()
+    if stats['identities'] > 0:
+        with st.expander(f"👥 Enrolled Identities ({stats['identities']})"):
+            conn = st.session_state.assistant.db_path
+            import sqlite3
+            conn_db = sqlite3.connect(conn)
+            c = conn_db.cursor()
+            c.execute("SELECT display_name, enrolled_date FROM identities WHERE consent=1 ORDER BY id DESC LIMIT 5")
+            rows = c.fetchall()
+            conn_db.close()
+            for row in rows:
+                st.markdown(f"✅ **{row[0]}** - {row[1][:10]}")
 
 st.markdown('</div>', unsafe_allow_html=True)
