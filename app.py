@@ -1,5 +1,6 @@
 import streamlit as st
 from rag_pipeline import RAGPipeline
+from ai_assistant import VoiceVisionAI
 import os
 import cv2
 
@@ -7,6 +8,8 @@ st.set_page_config(page_title="Baby AI", page_icon="👶", layout="wide", initia
 
 if "rag" not in st.session_state:
     st.session_state.rag = RAGPipeline()
+if "assistant" not in st.session_state:
+    st.session_state.assistant = VoiceVisionAI()
 if "mic_on" not in st.session_state:
     st.session_state.mic_on = False
 if "ai_on" not in st.session_state:
@@ -138,14 +141,15 @@ with col_b:
         if camera_image:
             face_name = st.text_input("Person's name:", key="camera_name")
             if st.button("Save from Camera") and face_name:
-                face_id, msg = st.session_state.rag.detect_and_save_face(camera_image.read(), face_name)
-                if face_id:
+                faces = st.session_state.assistant.detect_faces(camera_image.read())
+                if faces:
+                    result = st.session_state.assistant.enroll_identity(faces[0]["embedding"], face_name, consent=True)
                     response = f"Nice to meet you {face_name}! I will remember your face."
-                    st.success(f"✅ {msg} - Saved: {face_name}")
+                    st.success(f"✅ Enrolled: {result['person_id']}")
                     if st.session_state.mic_on:
-                        st.session_state.rag.speak(response)
+                        st.session_state.assistant.tts_speak(response)
                 else:
-                    st.error(f"❌ {msg}")
+                    st.error("❌ No face detected")
     
     with face_tab2:
         face_image = st.file_uploader("👤 Upload face", type=['jpg', 'jpeg', 'png'])
@@ -162,20 +166,56 @@ with col_b:
         recognize_image = st.camera_input("🔍 Recognize face")
         if recognize_image:
             if st.button("Recognize"):
-                result = st.session_state.rag.recognize_face(recognize_image.read())
+                faces = st.session_state.assistant.detect_faces(recognize_image.read())
+                if faces:
+                    match = st.session_state.assistant.match_identity(faces[0]["embedding"])
+                    if match:
+                        result = f"Hello {match['display_name']}! Confidence: {match['confidence']:.1f}%"
+                    else:
+                        result = "Unknown person - not enrolled"
+                else:
+                    result = "No face detected"
+                
                 if st.session_state.mic_on:
-                    st.session_state.rag.speak(result)
+                    st.session_state.assistant.tts_speak(result)
                 st.info(f"🤖 {result}")
 
-query = st.text_input("💬 Ask me anything:", key="query_input")
+col_q1, col_q2 = st.columns([3, 1])
+
+with col_q1:
+    query = st.text_input("💬 Ask me anything:", key="query_input")
+
+with col_q2:
+    use_web = st.checkbox("🌐 Web Search", value=True)
+    if st.button("🎤 Voice Input"):
+        with st.spinner("Listening..."):
+            voice_query = st.session_state.assistant.asr_listen()
+            if voice_query:
+                st.session_state.voice_query = voice_query
+                st.rerun()
+
+if "voice_query" in st.session_state:
+    query = st.session_state.voice_query
+    del st.session_state.voice_query
 
 if st.button("🔍 Ask Baby AI", use_container_width=True) and query:
     if st.session_state.ai_on:
-        with st.spinner("🤔 Learning and thinking..."):
-            result = st.session_state.rag.query(query)
+        with st.spinner("🤔 Searching and thinking..."):
+            if use_web:
+                result, sources = st.session_state.assistant.process_query(query, use_web=True)
+            else:
+                result = st.session_state.rag.query(query)
+                sources = []
+            
             if st.session_state.mic_on:
-                st.session_state.rag.speak(result)
+                st.session_state.assistant.tts_speak(result)
+            
             st.markdown(f"<div style='background-color: rgba(255,255,255,0.9); padding: 20px; border-radius: 15px; margin: 20px 0; box-shadow: 0 10px 30px rgba(0,0,0,0.2);'><b style='font-size: 1.3em;'>🤖 Baby AI says:</b><br><p style='font-size: 1.1em; margin-top: 10px;'>{result}</p></div>", unsafe_allow_html=True)
+            
+            if sources:
+                st.markdown("**Sources:**")
+                for src in sources[:3]:
+                    st.markdown(f"- {src}")
     else:
         st.warning("⚠️ Turn ON the AI first!")
 
