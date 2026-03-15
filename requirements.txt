@@ -1,8 +1,3 @@
-streamlit
-opencv-python
-numpy
-pyttsx3
-SpeechRecognition
-requests
-beautifulsoup4
-pyaudio
+torch
+torchvision
+Pillow
