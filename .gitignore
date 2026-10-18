@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Runtime state (created locally, not part of the repo)
+memory.json
+
+# MNIST dataset — train.py downloads it automatically (download=True)
+data/
+
+# Virtual environments / env files
+.venv/
+venv/
+.env

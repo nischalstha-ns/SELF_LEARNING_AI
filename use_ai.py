@@ -1,41 +1,25 @@
 import torch
-import torch.nn as nn
 import torchvision.transforms as transforms
-from PIL import Image
+from PIL import Image, ImageOps
 import os
 
-# ================== MODEL DEFINITION (copy from train.py) ==================
-class SelfLearningNet(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(28*28, 128),
-            nn.ReLU(),
-            nn.Linear(128, 64),
-            nn.ReLU(),
-            nn.Linear(64, 10)
-        )
-    
-    def forward(self, x):
-        return self.net(x)
+from model import SelfLearningNet, load_model
+
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # ================== LOAD THE TRAINED MODEL ==================
-model = SelfLearningNet()
-
-# Load the model you trained earlier
 model_path = "models/self_learning_ai.pth"
 if not os.path.exists(model_path):
     print("❌ Model file not found! First run: python train.py")
     exit()
 
-model.load_state_dict(torch.load(model_path, weights_only=True))
+model = load_model(model_path, DEVICE)
 model.eval()
 print("✅ Model loaded successfully!")
 
 # ================== PREDICT ANY DIGIT IMAGE ==================
-# Put any handwritten digit image (28x28) in this folder and name it "your_digit.png"
-# (You can draw one in Paint, save as PNG, or download from Google "MNIST digit example")
+# Put any handwritten digit image in this folder and name it "your_digit.png"
+# (You can draw one in Paint, save as PNG, or use an MNIST sample.)
 
 img_path = "your_digit.png"
 
@@ -47,14 +31,16 @@ else:
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
     ])
-    
-    img = Image.open(img_path).convert("L").resize((28, 28))
-    img_tensor = transform(img).unsqueeze(0)  # add batch dimension
-    
+
+    img = Image.open(img_path).convert("L")
+    img = ImageOps.autocontrast(img)
+    img = img.resize((28, 28), Image.LANCZOS)
+    img_tensor = transform(img).unsqueeze(0).to(DEVICE)  # add batch dimension
+
     with torch.no_grad():
         output = model(img_tensor)
         prediction = torch.argmax(output, dim=1).item()
         confidence = torch.softmax(output, dim=1).max().item() * 100
-    
+
     print(f"🎉 AI Prediction: {prediction}")
     print(f"Confidence: {confidence:.1f}%")
